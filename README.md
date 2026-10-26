@@ -16,7 +16,7 @@ A modern download manager for Windows, built with Rust (Tauri v2) and React 19.
 
 Rheow downloads files through a multi-segment HTTP engine and displays progress inside a single dashboard. The backend uses `tokio` and `reqwest` to write incoming bytes directly into pre-allocated file space on disk, avoiding post-download file merging. A Manifest V3 browser extension routes downloads from Chromium-based browsers to the local app through a loopback HTTP bridge.
 
-Pre-built setup installers are available on the [Releases](releases) page. You can also build the application directly from source.
+Pre-built setup installers are available on the [Releases](https://github.com/PIKAZZO18/Rheow-Download-Manager/releases/download/v1.0.0/Rheow_1.0.0_x64-setup.exe) page. You can also build the application directly from source.
 
 ---
 
