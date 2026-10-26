@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-sym-dark">
+  <title id="title-sym-dark">Rheow Logo (Dark Mode)</title>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#3b82f6" stroke-width="24" d="M 102 48 L 168 114" />
+    <path stroke="#ffffff" stroke-width="24" d="M 52 98 L 126 172 A 26 26 0 0 0 144 180 L 204 180" />
+    <path stroke="#ffffff" stroke-width="24" d="M 52 154 L 82 184" />
+  </g>
+</svg>

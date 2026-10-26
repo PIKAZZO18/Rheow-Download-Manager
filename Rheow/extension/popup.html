@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>Rheow</title>
+  <style>
+    :root {
+      /* DESIGN.md tokens */
+      --canvas: #ffffff;
+      --paper: #f5f5f5;
+      --ash: #e5e5e5;
+      --smoke: #d4d4d4;
+      --ink: #171717;
+      --steel: #525252;
+      --fog: #737373;
+      --silver: #a3a3a3;
+      --blue: #2563eb;
+      --mint: #dcfce7;
+      --green: #16a34a;
+
+      --radius-outer: 14px;
+      --radius-card: 10px;
+      --radius-input: 8px;
+      --radius-button: 8px;
+      --radius-pill: 9999px;
+
+      --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      background: var(--paper);
+    }
+
+    body {
+      width: 352px;
+      padding: 8px;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.43;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* Floating Card */
+    .popup-card {
+      background: var(--canvas);
+      border: 1px solid var(--ash);
+      border-radius: var(--radius-outer);
+      padding: 14px 14px 12px;
+      box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 11px;
+      border-bottom: 1px solid var(--ash);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.08));
+    }
+
+    .title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 22px;
+      padding: 0 8px;
+      border: 1px solid var(--ash);
+      border-radius: var(--radius-pill);
+      background: var(--paper);
+      color: var(--fog);
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out),
+        color 0.18s var(--ease-out);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--silver);
+      transition: background-color 0.18s var(--ease-out);
+    }
+
+    .status-pill.online {
+      background: var(--mint);
+      border-color: transparent;
+      color: var(--green);
+    }
+
+    .status-pill.online .status-dot {
+      background: var(--green);
+    }
+
+    /* Browser interception card */
+    .card {
+      margin-top: 11px;
+      padding: 12px 14px;
+      background: var(--paper);
+      border: 1px solid var(--ash);
+      border-radius: var(--radius-card);
+    }
+
+    .setting {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .setting + .setting {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--ash);
+    }
+
+    .setting-copy {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .setting-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .setting-hint {
+      font-size: 11px;
+      color: var(--fog);
+      text-wrap: pretty;
+    }
+
+    /* Switch — 40px hit area, 34×20 track */
+    .switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 36px;
+      margin: -8px -6px -8px 0;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .switch input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .slider {
+      position: relative;
+      width: 34px;
+      height: 20px;
+      border-radius: var(--radius-pill);
+      background: var(--smoke);
+      transition: background-color 0.16s var(--ease-out);
+      pointer-events: none;
+    }
+
+    .slider::before {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--canvas);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+      transition: transform 0.16s var(--ease-out);
+    }
+
+    .switch input:checked + .slider {
+      background: var(--blue);
+    }
+
+    .switch input:checked + .slider::before {
+      transform: translateX(14px);
+    }
+
+    .switch input:focus-visible + .slider {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+
+    /* Quick send */
+    .quick-send {
+      display: flex;
+      gap: 8px;
+      margin-top: 11px;
+    }
+
+    #quickUrl {
+      flex: 1;
+      min-width: 0;
+      height: 34px;
+      padding: 0 10px;
+      background: var(--canvas);
+      border: 1px solid var(--smoke);
+      border-radius: var(--radius-input);
+      color: var(--ink);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      outline: none;
+      user-select: text;
+      transition: border-color 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+    }
+
+    #quickUrl::placeholder {
+      color: var(--silver);
+    }
+
+    #quickUrl:hover {
+      border-color: #a3a3a3;
+    }
+
+    #quickUrl:focus-visible {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .btn-primary {
+      height: 34px;
+      min-width: 64px;
+      padding: 0 14px;
+      background: var(--ink);
+      border: 1px solid var(--ink);
+      border-radius: var(--radius-button);
+      color: var(--canvas);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: background-color 0.15s var(--ease-out), transform 0.1s var(--ease-out),
+        opacity 0.15s var(--ease-out);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #000000;
+      border-color: #000000;
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.18);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
+    /* Footer meta */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 10px;
+      color: var(--silver);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+
+    .sep {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: var(--silver);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="popup-card">
+    <header class="header">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="22" height="22" role="img" aria-label="Rheow Logo">
+            <rect x="4" y="4" width="248" height="248" rx="52" fill="#ffffff" stroke="rgba(0, 0, 0, 0.13)" stroke-width="7" />
+            <g transform="translate(18, 18) scale(0.859375)">
+              <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="#2563eb" stroke-width="28" d="M 102 48 L 168 114" />
+                <path stroke="#0a0a0a" stroke-width="28" d="M 52 98 L 126 172 A 26 26 0 0 0 144 180 L 204 180" />
+                <path stroke="#0a0a0a" stroke-width="28" d="M 52 154 L 82 184" />
+              </g>
+            </g>
+          </svg>
+        </div>
+        <span class="title">Rheow</span>
+      </div>
+
+      <div id="statusPill" class="status-pill" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="statusText">Checking...</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <div class="setting">
+          <div class="setting-copy">
+            <label class="setting-label" for="interceptToggle">Browser interception</label>
+            <p class="setting-hint">Catch downloads automatically</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="interceptToggle" checked aria-label="Intercept browser downloads automatically">
+            <span class="slider" aria-hidden="true"></span>
+          </label>
+        </div>
+
+        <div class="setting">
+          <div class="setting-copy">
+            <label class="setting-label" for="snifferToggle">Media sniffer</label>
+            <p class="setting-hint">Detect videos and audios on web pages</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="snifferToggle" checked aria-label="Detect videos and audios on web pages">
+            <span class="slider" aria-hidden="true"></span>
+          </label>
+        </div>
+      </section>
+
+      <div class="quick-send">
+        <input
+          type="text"
+          id="quickUrl"
+          placeholder="Paste a download URL"
+          aria-label="Download URL"
+          spellcheck="false"
+          autocomplete="off"
+        />
+        <button id="sendBtn" class="btn-primary" type="button">Catch</button>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <span>Port 41789</span>
+      <span class="sep" aria-hidden="true"></span>
+      <span>Range engine</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

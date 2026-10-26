@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-app-tile-light">
+  <title id="title-app-tile-light">Rheow App Tile (Rice Paper Light)</title>
+  <rect x="4" y="4" width="248" height="248" rx="52" fill="#ffffff" stroke="rgba(0, 0, 0, 0.13)" stroke-width="7" />
+  <g transform="translate(18, 18) scale(0.859375)">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke="#2563eb" stroke-width="28" d="M 102 48 L 168 114" />
+      <path stroke="#0a0a0a" stroke-width="28" d="M 52 98 L 126 172 A 26 26 0 0 0 144 180 L 204 180" />
+      <path stroke="#0a0a0a" stroke-width="28" d="M 52 154 L 82 184" />
+    </g>
+  </g>
+</svg>

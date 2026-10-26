@@ -1,0 +1,286 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Self-hosted fonts: the app must render correctly offline, and the production
+   Content Security Policy forbids loading stylesheets from fonts.googleapis.com. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/inter-latin-var.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/geist-mono-latin-var.woff2') format('woff2');
+}
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-canvas: #ffffff;
+  --color-paper: #f5f5f5;
+  --color-ash: #e5e5e5;
+  --color-smoke: #d4d4d4;
+  --color-pebble: #c8c8c8;
+  --color-midnight: #0a0a0a;
+  --color-charcoal: #171717;
+  --color-graphite: #262626;
+  --color-slate: #404040;
+  --color-steel: #525252;
+  --color-fog: #737373;
+  --color-silver: #a3a3a3;
+  --color-electric-blue: #2563eb;
+  --color-deep-sapphire: #1e40af;
+  --color-soft-mint: #dcfce7;
+  --color-vivid-green: #16a34a;
+  --color-tangerine: #ea580c;
+  --color-tangerine-light: #ffedd5;
+  --color-lavender: #7c3aed;
+  --color-lavender-light: #ede9fe;
+  --color-blue-light: #dbeaff;
+
+  --radius-pill: 9999px;
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --radius-input: 6px;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #ffffff;
+  color: #171717;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Disable Microsoft Edge & WebView2 native password reveal button (removes duplicate eye icon) */
+input::-ms-reveal,
+input::-ms-clear,
+::-ms-reveal,
+::-ms-clear {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Disable ugly native Chromium / WebView2 date & time picker indicators and popups */
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
+}
+
+/* Dedicated Rheow Custom Scrollbar Class */
+.rheow-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d4 transparent;
+}
+
+.rheow-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.rheow-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rheow-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #d4d4d4;
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.rheow-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #a3a3a3;
+}
+
+.rheow-scrollbar::-webkit-scrollbar-thumb:active {
+  background-color: #737373;
+}
+
+.rheow-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Utility to hide scrollbars while maintaining scroll functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom status & action micro-animations for Download Table */
+@keyframes arrowGlide {
+  0%, 100% {
+    transform: translateY(-1.5px);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes statusBadgePop {
+  0% {
+    transform: scale(0.9);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkSpring {
+  0% {
+    transform: scale(0.4) rotate(-25deg);
+    opacity: 0;
+  }
+  65% {
+    transform: scale(1.35) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes pausePop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  65% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes completedGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(22, 163, 74, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+  }
+}
+
+@keyframes trashWiggle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1.15);
+  }
+  25% {
+    transform: rotate(-14deg) scale(1.18);
+  }
+  75% {
+    transform: rotate(12deg) scale(1.18);
+  }
+}
+
+.animate-arrow-glide {
+  animation: arrowGlide 1.2s ease-in-out infinite;
+}
+
+.animate-status-pop {
+  animation: statusBadgePop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-check-spring {
+  animation: checkSpring 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pause-pop {
+  animation: pausePop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 6s linear infinite;
+}
+
+.animate-completed-glow {
+  animation: completedGlow 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-trash-wiggle {
+  animation: trashWiggle 0.4s ease-in-out infinite;
+}
+
+/* Rheow Brand Logo Tile - tactile drop-shadow & elevation pop */
+.rheow-logo-tile {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.08)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.08));
+  transition: filter 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.group:hover .rheow-logo-tile,
+.rheow-logo-tile:hover {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.10)) drop-shadow(0 5px 12px rgba(0, 0, 0, 0.12));
+}

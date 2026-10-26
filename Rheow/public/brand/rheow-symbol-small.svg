@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title-sym-small">
+  <title id="title-sym-small">Rheow Logo (Small-size cut)</title>
+  <g fill="none" stroke-width="32" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#2563eb" d="M 104 46 L 170 112" />
+    <path stroke="#0a0a0a" d="M 50 96 L 126 172 A 26 26 0 0 0 144 180 L 206 180" />
+    <path stroke="#0a0a0a" d="M 50 156 L 80 186" />
+  </g>
+</svg>
