@@ -2,76 +2,85 @@
   <img src="rheow-horizontal-dark.png" alt="Rheow" width="360">
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078d4?style=flat-square&logo=windows&logoColor=white" alt="Platform: Windows 10 | 11 x64">
+  <img src="https://img.shields.io/badge/Tauri-v2-24c8db?style=flat-square&logo=tauri&logoColor=white" alt="Tauri v2">
+  <img src="https://img.shields.io/badge/Rust-2021-000000?style=flat-square&logo=rust&logoColor=white" alt="Rust">
+  <img src="https://img.shields.io/badge/React-19-222222?style=flat-square&logo=react&logoColor=61dafb" alt="React 19">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
+</p>
+
 # Rheow
 
-**Download manager Windows yang cepat, ringan, dan modern** — dibangun dengan **Rust (Tauri v2)** dan **React 19 + TypeScript**.
+A modern download manager for Windows, built with Rust (Tauri v2) and React 19.
 
-Repository ini berisi source code aplikasi Rheow. Tidak ada installer atau build artifact yang disertakan; clone repo ini lalu build dan test sendiri.
+Rheow downloads files through a multi-segment HTTP engine and displays progress inside a single dashboard. The backend uses `tokio` and `reqwest` to write incoming bytes directly into pre-allocated file space on disk, avoiding post-download file merging. A Manifest V3 browser extension routes downloads from Chromium-based browsers to the local app through a loopback HTTP bridge.
 
-Rheow adalah aplikasi download manager multi-segmen dengan antarmuka satu jendela. Mesin unduh paralel berbasis `tokio` dan `reqwest` menulis langsung ke offset berkas yang sudah dialokasikan, sementara dashboard React menampilkan progres setiap segmen secara real-time. Rheow juga terintegrasi dengan browser melalui ekstensi Manifest V3 dan bridge lokal.
+Pre-built setup installers are available on the [Releases](releases) page. You can also build the application directly from source.
 
 ---
 
-## Fitur Utama
+## Features
 
-- **Multi-segment range engine** — hingga 32 koneksi paralel dengan penulisan langsung ke disk (*pre-allocation*, tanpa penggabungan file sementara).
-- **Dashboard satu jendela** — progres, kecepatan, sisa waktu, dan visualisasi segmen tanpa popup download terpisah.
-- **Antrean & penjadwalan** — batas koneksi global, antrean FIFO, pause/resume/retry, serta pembatas kecepatan.
-- **Kategori otomatis** — file diklasifikasikan ke `Compressed`, `Programs`, `Video`, `Documents`, `Music`, atau `General`, dengan subfolder yang dapat dikustomisasi.
-- **Integrasi browser** — ekstensi Chrome/Edge/Brave (Manifest V3), context menu "Download with Rheow", intersepsi download, dan bridge lokal di `http://127.0.0.1:41789`.
-- **Wizard ekstensi first-run** — aplikasi memandu aktivasi ekstensi lewat browser.
-- **Notifikasi Windows interaktif** — aksi Open File, Open Folder, Retry, dan Refresh Link langsung dari toast.
-- **Persistensi SQLite** — status unduhan, segmen, riwayat, dan pengaturan tersimpan di `%APPDATA%\Rheow\rheow.db`.
-- **UI konsisten** — dashboard bersih dengan token desain internal Rheow.
+- **Multi-segment range engine**: Up to 32 parallel connections with disk pre-allocation, writing chunks straight to disk offsets.
+- **Single-window dashboard**: Real-time progress, speed, remaining time, and segment block visualizer in one interface without detached popup dialogs.
+- **Queue and speed control**: Global connection limits, FIFO task queue, download speed limiter, pause, resume, and retry actions.
+- **File categorization**: Routes downloads to `Compressed`, `Programs`, `Video`, `Documents`, `Music`, or `General` with customizable folders.
+- **Browser integration**: Manifest V3 extension for Chrome, Edge, and Brave with right-click context menu interception via local bridge on `http://127.0.0.1:41789`.
+- **First-run extension wizard**: Guided browser setup that opens your browser and verifies extension connectivity.
+- **Windows toast notifications**: Interactive action buttons to open files, reveal folders, or retry failed downloads.
+- **SQLite persistence**: Task states, chunk records, history, and user settings stored in `%APPDATA%\Rheow\rheow.db`.
 
 ---
 
 ## Tech Stack
 
-| Layer | Teknologi |
+| Layer | Technology |
 |---|---|
-| Desktop framework | Tauri v2 |
+| Desktop Framework | Tauri v2 |
 | Backend | Rust, `tokio`, `reqwest`, `rusqlite`, `serde` |
 | Frontend | React 19, TypeScript, Vite 8 |
 | Styling | Tailwind CSS v4, Lucide Icons |
-| Database | SQLite (embedded) |
-| Browser extension | Chrome Manifest V3 |
-| Installer | NSIS (Tauri bundler) |
+| Database | SQLite (bundled) |
+| Browser Extension | Manifest V3 (Chrome, Edge, Brave) |
+| Packaging | NSIS (Tauri bundler) |
 
 ---
 
-## Struktur Repository
+## Repository Structure
 
 ```text
 .
-├── README.md
 ├── LICENSE
+├── README.md
 ├── rheow-horizontal-dark.png
-└── Rheow/                      # Source aplikasi Tauri
-    ├── extension/              # Ekstensi Chrome/Edge/Brave (MV3)
-    ├── public/                 # Aset frontend & brand
-    ├── scripts/                # Test bridge & E2E ekstensi
-    ├── src/                    # Frontend React + TypeScript
-    └── src-tauri/              # Backend Rust, konfigurasi Tauri, NSIS
+└── Rheow/
+    ├── extension/              # Manifest V3 browser extension
+    ├── public/                 # Static assets and brand icons
+    ├── scripts/                # Bridge and integration test scripts
+    ├── src/                    # React frontend
+    └── src-tauri/              # Rust backend and Tauri configuration
 ```
 
 ---
 
-## Persyaratan
+## Prerequisites
+
+To build Rheow from source, ensure you have:
 
 - **Windows 10 / 11 x64**
-- **Node.js 20.19+** (atau 22.12+) dan npm
+- **Node.js 20.19+** (or 22.12+) and npm
 - **Rust** toolchain `stable-x86_64-pc-windows-msvc`
-- **Visual Studio Build Tools** dengan workload *Desktop development with C++*
-- **WebView2 Runtime** (biasanya sudah tersedia di Windows 10/11)
+- **Visual Studio Build Tools** with the *Desktop development with C++* workload
+- **WebView2 Runtime** (pre-installed on Windows 10 and 11)
 
-Panduan instalasi Tauri: <https://tauri.app/start/prerequisites/>
+For environment setup details, see the [Tauri Prerequisites Guide](https://tauri.app/start/prerequisites/).
 
 ---
 
-## Build & Jalankan
+## Build and Run
 
-Dari root repository:
+Run development mode:
 
 ```powershell
 cd Rheow
@@ -79,7 +88,7 @@ npm ci
 npx tauri dev
 ```
 
-Build installer NSIS:
+Build the NSIS setup installer:
 
 ```powershell
 cd Rheow
@@ -87,48 +96,49 @@ npm ci
 npx tauri build
 ```
 
-Installer dihasilkan di:
+The installer will be generated at:
 
 ```text
 Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.0_x64-setup.exe
 ```
 
-Untuk hanya membangun executable:
+To build only the standalone binary without packaging:
 
 ```powershell
+cd Rheow
 npx tauri build --no-bundle
 ```
 
-Output: `Rheow\src-tauri\target\release\rheow.exe`.
+The executable will be located at `Rheow\src-tauri\target\release\rheow.exe`.
 
-> `npm run build` hanya membangun frontend ke `dist/`. Gunakan `npx tauri build` untuk installer lengkap.
+> Note: `npm run build` only compiles the frontend into `dist/`. Use `npx tauri build` to compile the complete desktop application.
 
 ---
 
 ## Testing
 
-Unit dan integration test Rust:
+Run Rust unit and integration tests:
 
 ```powershell
 cd Rheow\src-tauri
 cargo test
 ```
 
-Test integrasi engine secara spesifik:
+Run engine integration tests:
 
 ```powershell
 cd Rheow\src-tauri
 cargo test --test engine_test -- --nocapture
 ```
 
-E2E ekstensi (aplikasi Rheow harus sudah berjalan):
+Run extension end-to-end tests (requires Rheow desktop app running):
 
 ```powershell
 cd Rheow
 npm run test:e2e
 ```
 
-Matriks keamanan HTTP bridge (aplikasi Rheow harus sudah berjalan):
+Run HTTP bridge security test matrix (requires Rheow desktop app running):
 
 ```powershell
 cd Rheow
@@ -137,27 +147,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\test-bridge.ps1
 
 ---
 
-## Ekstensi Browser
+## Browser Extension
 
-Installer Rheow membawa ekstensi di dalam paket. Saat aplikasi pertama kali dijalankan, wizard akan:
+The Rheow desktop installer packages the browser extension. On first launch, the setup wizard:
 
-1. Menyalin ekstensi ke `%LOCALAPPDATA%\com.rheow.app\browser-extension`.
-2. Membuka browser default.
-3. Memandu pengguna membuka `chrome://extensions` atau `edge://extensions`, mengaktifkan **Developer mode**, lalu **Load unpacked**.
-4. Menunggu hingga ekstensi terhubung ke Rheow.
+1. Copies extension files to `%LOCALAPPDATA%\com.rheow.app\browser-extension`.
+2. Opens your default Chromium-based browser.
+3. Guides you to open `chrome://extensions` or `edge://extensions`, enable **Developer mode**, and click **Load unpacked**.
+4. Verifies the connection between browser and desktop engine.
 
-Wizard dapat dibuka kembali dari **Settings → Browser → Open wizard**.
+You can reopen this wizard at any time from **Settings -> Browser -> Open wizard**.
 
-Untuk development, ekstensi dapat dimuat manual dari folder `Rheow\extension` di Chrome, Edge, atau Brave.
-
----
-
-## Dokumentasi Teknis
-
-Lihat [`Rheow/README.md`](Rheow/README.md) untuk struktur aplikasi, arsitektur, dan detail build.
+For local development, load the `Rheow\extension` directory as an unpacked extension in Chrome, Edge, or Brave.
 
 ---
 
-## Lisensi
+## License
 
-Dirilis di bawah lisensi **MIT**. Lihat [`LICENSE`](LICENSE).
+This project is licensed under the [MIT License](LICENSE).
