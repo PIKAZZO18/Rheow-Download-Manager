@@ -200,6 +200,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     };
   }, [isOpen, activeTab, browserRefreshKey]);
 
+  // Presence expires when the extension stops its heartbeat, so keep the card
+  // current while the Browser tab stays open instead of waiting for a click.
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'browser') return;
+    const timer = window.setInterval(() => {
+      setBrowserRefreshKey((key) => key + 1);
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [isOpen, activeTab]);
+
   // Close on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

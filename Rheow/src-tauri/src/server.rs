@@ -27,10 +27,12 @@ const READ_TIMEOUT: Duration = Duration::from_secs(10);
 static BRIDGE_RUNNING: AtomicBool = AtomicBool::new(false);
 static REQUEST_COUNT: AtomicU64 = AtomicU64::new(0);
 static LAST_REQUEST: Mutex<Option<BridgeLastRequest>> = Mutex::new(None);
-/// Set the first time an authorized client reaches the bridge. Only the Rheow
-/// extension (or a trusted non-browser client) can pass `authorize`, so this is
-/// a reliable "extension is installed and talking to us" signal for onboarding.
-static EXTENSION_CONNECTED: AtomicBool = AtomicBool::new(false);
+/// Milliseconds since the last authorized request. The extension announces
+/// itself every minute while it is installed, so a recent heartbeat is the
+/// only reliable "extension is still there" signal. Removing the extension
+/// stops the heartbeats and the status expires instead of latching forever.
+static LAST_SEEN_MS: AtomicU64 = AtomicU64::new(0);
+const PRESENCE_TTL_MS: u64 = 90_000;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct BridgeLastRequest {
@@ -50,6 +52,15 @@ pub struct BridgeStatus {
     pub last_request: Option<BridgeLastRequest>,
 }
 
+fn now_ms() -> u64 {
+    chrono::Utc::now().timestamp_millis().max(0) as u64
+}
+
+/// True while the last authorized heartbeat is recent enough to trust.
+fn presence_is_fresh(last_seen_ms: u64, now_ms: u64) -> bool {
+    last_seen_ms > 0 && now_ms.saturating_sub(last_seen_ms) <= PRESENCE_TTL_MS
+}
+
 /// Snapshot for the Settings > Browser panel. The listener binds before this
 /// flag is set, so "running" also means the port was actually claimed.
 pub fn bridge_status() -> BridgeStatus {
@@ -59,13 +70,13 @@ pub fn bridge_status() -> BridgeStatus {
         port: BRIDGE_PORT,
         endpoint: format!("http://{}:{}", BRIDGE_HOST, BRIDGE_PORT),
         request_count: REQUEST_COUNT.load(Ordering::Relaxed),
-        extension_connected: EXTENSION_CONNECTED.load(Ordering::Relaxed),
+        extension_connected: presence_is_fresh(LAST_SEEN_MS.load(Ordering::Relaxed), now_ms()),
         last_request: LAST_REQUEST.lock().ok().and_then(|last| last.clone()),
     }
 }
 
 fn record_request(method: &str, path: &str) {
-    EXTENSION_CONNECTED.store(true, Ordering::Relaxed);
+    LAST_SEEN_MS.store(now_ms(), Ordering::Relaxed);
     REQUEST_COUNT.fetch_add(1, Ordering::Relaxed);
     if let Ok(mut last) = LAST_REQUEST.lock() {
         *last = Some(BridgeLastRequest {
@@ -470,7 +481,11 @@ pub fn start_http_server(app_handle: AppHandle) {
 
 #[cfg(test)]
 mod tests {
-    use super::{authorize, is_trusted_origin, RequestHead};
+    use super::{
+        authorize, bridge_status, is_trusted_origin, now_ms, presence_is_fresh, record_request,
+        RequestHead, LAST_SEEN_MS, PRESENCE_TTL_MS,
+    };
+    use std::sync::atomic::Ordering;
 
     fn head(origin: Option<&str>, host: &str, client: Option<&str>) -> RequestHead {
         RequestHead {
@@ -532,6 +547,31 @@ mod tests {
         assert!(is_trusted_origin("moz-extension://id"));
         assert!(!is_trusted_origin("http://127.0.0.1:1420"));
         assert!(!is_trusted_origin("https://chrome-extension.example"));
+    }
+
+    #[test]
+    fn presence_expires_when_heartbeat_stops() {
+        let last_seen = 1_000_000;
+        assert!(presence_is_fresh(last_seen, last_seen + 1_000));
+        assert!(presence_is_fresh(last_seen, last_seen + PRESENCE_TTL_MS));
+        assert!(!presence_is_fresh(
+            last_seen,
+            last_seen + PRESENCE_TTL_MS + 1
+        ));
+        // No heartbeat has ever been seen.
+        assert!(!presence_is_fresh(0, 1_000_000));
+    }
+
+    #[test]
+    fn bridge_status_uses_recent_heartbeat() {
+        record_request("GET", "/api/health");
+        assert!(bridge_status().extension_connected);
+
+        LAST_SEEN_MS.store(
+            now_ms().saturating_sub(PRESENCE_TTL_MS + 1),
+            Ordering::Relaxed,
+        );
+        assert!(!bridge_status().extension_connected);
     }
 
     #[test]

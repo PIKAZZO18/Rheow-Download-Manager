@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed repetitive setup subtitle copy and redundant bridge security note from the browser integration wizard for a cleaner, high-focus layout.
 - Removed the redundant static "Connect the extension" instruction card from the Settings Browser tab in favor of the interactive guided setup wizard.
 
+### Fixed
+
+- The **Browser** settings tab no longer reports **Connected** after the extension is removed. The bridge now trusts the extension only while its once-a-minute heartbeat is recent, and the tab refreshes the status on its own while open.
+
 ## [1.0.2] - 2026-10-27
 
 ### Added
