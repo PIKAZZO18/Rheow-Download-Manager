@@ -43,7 +43,7 @@ interface BrowserLaunchInfo {
 
 type Step = 1 | 2;
 type BusyAction = 'browser' | 'folder' | 'copy' | 'check' | null;
-type CopiedField = 'path' | 'url' | null;
+type CopiedField = 'path' | null;
 
 const STEPS: Array<{ id: Step; label: string }> = [
   { id: 1, label: 'Install in browser' },
@@ -218,20 +218,6 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
     }
   };
 
-  const handleCopyAddress = async () => {
-    const targetUrl = launch?.extensions_url || 'chrome://extensions';
-    setBusy('copy');
-    setError(null);
-    try {
-      await invoke('copy_text_to_clipboard', { text: targetUrl });
-      flashCopied('url');
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const handleCheckConnection = async () => {
     setBusy('check');
     setCheckMessage(null);
@@ -258,6 +244,7 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
   const extensionVersion = info?.version ?? '1.0.0';
   const address = launch?.extensions_url ?? 'chrome://extensions  ·  edge://extensions';
   const browserName = launch?.browser ?? 'your browser';
+  const openLabel = launch ? `Open ${launch.browser}` : 'Open browser';
 
   return (
     <div
@@ -346,25 +333,6 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                 </div>
                 <button
                   type="button"
-                  onClick={handleCopyAddress}
-                  disabled={busy === 'copy'}
-                  className={secondaryButton}
-                  title="Copy extensions address"
-                >
-                  {copiedField === 'url' ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 stroke-[2.4] text-emerald-600" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5 stroke-[2]" />
-                      Copy
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
                   onClick={handleOpenBrowser}
                   disabled={busy === 'browser'}
                   className={`${primaryButton} shrink-0`}
@@ -374,7 +342,7 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                   ) : (
                     <ExternalLink className="w-3.5 h-3.5 stroke-[2]" />
                   )}
-                  {launch ? `Open ${launch.browser}` : 'Open browser'}
+                  {openLabel}
                 </button>
               </div>
 
@@ -384,10 +352,8 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                     1
                   </span>
                   <span>
-                    The button above opens the extensions page in your default browser. If it
-                    does not open, use{' '}
-                    <strong className="font-semibold text-[#171717]">Copy</strong> and paste the
-                    address into a new tab.
+                    Click <strong className="font-semibold text-[#171717]">{openLabel}</strong> to
+                    jump to the extensions page.
                   </span>
                 </li>
                 <li className="flex gap-2">

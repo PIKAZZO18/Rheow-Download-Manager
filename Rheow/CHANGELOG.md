@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.
-- Combined the extensions address bar, copy action, and browser launch button into a single compact toolbar in the setup wizard.
+- Combined the extensions address bar and browser launch button into a single compact toolbar in the setup wizard, and the first step now tells you to click that button instead of copying the address.
 - Removed repetitive setup subtitle copy and redundant bridge security note from the browser integration wizard for a cleaner, high-focus layout.
 - Removed the redundant static "Connect the extension" instruction card from the Settings Browser tab in favor of the interactive guided setup wizard.
 - The setup wizard detects the default browser and labels the button with it. Clicking it opens a new browser window that lands directly on the extensions page (`chrome://extensions`, `edge://extensions`, and so on), without touching the clipboard or any browser window you already had open.
