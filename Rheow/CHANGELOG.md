@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Changed
 
-- Fixed lopsided and unbalanced layout in the browser setup completion card by structuring the icon, version badge, and active status into a balanced two-line hierarchy with a vertically centered connection badge.
+- Removed the redundant browser integration card from the browser setup completion step, leaving a clean and uncluttered confirmation screen.
 
 ## [1.0.2] - 2026-10-27
 

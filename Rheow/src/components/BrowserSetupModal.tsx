@@ -567,44 +567,17 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
           )}
 
           {step === 3 && (
-            <div className="flex flex-col items-center text-center py-3">
+            <div className="flex flex-col items-center text-center py-6">
               <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                 <Check className="w-7 h-7 stroke-[2.6]" />
               </div>
               <h3 className="text-base font-semibold text-[#171717] mt-3">You're all set</h3>
-              <p className="text-[11px] text-[#737373] leading-relaxed mt-1 max-w-[360px]">
+              <p className="text-[11px] text-[#737373] leading-relaxed mt-1.5 max-w-[360px]">
                 The Rheow extension is connected. Downloads you start in {browserName} will be
                 handed to Rheow automatically, with full multi-threaded speed.
               </p>
 
-              <div className="w-full mt-4 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 text-left">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-white border border-[#e5e5e5] flex items-center justify-center text-[#16a34a] shrink-0 shadow-2xs">
-                      <Globe className="w-4 h-4 stroke-[2]" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-[#171717]">
-                          Browser integration
-                        </span>
-                        <span className="text-[10px] font-medium text-[#737373] bg-white border border-[#e5e5e5] px-1.5 py-0.5 rounded-md shrink-0">
-                          v{extensionVersion}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-[#737373] truncate mt-0.5">
-                        {launch?.browser ? `Active in ${launch.browser}` : 'Local bridge connected'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    Connected
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-[#737373] leading-relaxed mt-3">
+              <p className="text-[10px] text-[#737373] leading-relaxed mt-4">
                 You can reopen this wizard any time from{' '}
                 <strong className="font-semibold text-[#525252]">Settings → Browser</strong>.
               </p>
