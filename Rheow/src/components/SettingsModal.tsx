@@ -442,14 +442,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className={`space-y-3.5 ${activeTab === 'connection' ? 'block' : 'hidden'}`}>
             {/* Max Connection Selector */}
             <div className="bg-[#fafafa] border border-[#e5e5e5] rounded-xl p-3.5 space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#171717] block">
-                  Default Max. Connection Number
-                </label>
-                <span className="text-[11px] font-mono text-[#737373]">
-                  {localSettings.maxConnections} parallel streams
-                </span>
-              </div>
+              <label className="text-xs font-semibold text-[#171717] block">
+                Default Max. Connection Number
+              </label>
 
               {/* Connection Count Buttons */}
               <div className="grid grid-cols-7 gap-1.5">
@@ -937,9 +932,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-[#171717]">Guided browser setup</p>
-                  <p className="text-[10px] text-[#737373] leading-relaxed">
-                    Opens the extension folder and your browser for you.
-                  </p>
                 </div>
               </div>
               <button

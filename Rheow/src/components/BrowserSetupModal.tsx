@@ -274,9 +274,6 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
               <h2 className="text-sm font-semibold text-[#171717] tracking-tight truncate">
                 Connect your browser
               </h2>
-              <p className="text-[10px] text-[#737373] truncate">
-                One-time setup · takes about a minute
-              </p>
             </div>
           </div>
 
@@ -592,8 +589,7 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                     Connected
                   </span>
                 </div>
-                <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[#737373]">
-                  <span className="truncate">{browserName}</span>
+                <div className="mt-2 flex items-center justify-end gap-2 text-[10px] text-[#737373]">
                   <span className="font-mono shrink-0">Extension v{extensionVersion}</span>
                 </div>
               </div>

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Local Bridge card no longer shows the request counter and last-request
   line.
 - The Updates tab no longer shows the signature and database-backup footer.
+- The Connection tab no longer repeats the selected stream count next to
+  **Default Max. Connection Number**. The browser setup wizard drops the
+  "one-time setup" subtitle and the browser-name label, and the guided-setup
+  card shows only its title.
 
 ## [1.0.2] - 2026-10-27
 
