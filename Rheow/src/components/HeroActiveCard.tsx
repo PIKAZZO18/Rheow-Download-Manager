@@ -41,7 +41,6 @@ function useFluidSpeed(targetSpeed: number, isDownloading: boolean): string {
 
       const target = targetSpeedRef.current;
       const current = currentSpeedRef.current;
-      const isDown = isDownloadingRef.current;
 
       // Exponential smoothing towards target speed
       const diff = target - current;
@@ -53,14 +52,9 @@ function useFluidSpeed(targetSpeed: number, isDownloading: boolean): string {
         currentSpeedRef.current = target;
       }
 
-      // Add gentle organic wave (±0.4%) when actively downloading to feel alive and continuous
-      let finalDisplaySpeed = currentSpeedRef.current;
-      if (isDown && target > 0) {
-        const wave = Math.sin(now * 0.0028) * 0.0035 + Math.sin(now * 0.0013) * 0.002;
-        finalDisplaySpeed = Math.max(0, currentSpeedRef.current * (1 + wave));
-      }
-
-      setAnimatedSpeed(finalDisplaySpeed);
+      // Show the smoothed measured speed exactly. No decorative oscillation:
+      // users read small wiggles in this number as an unstable connection.
+      setAnimatedSpeed(Math.max(0, currentSpeedRef.current));
 
       rafIdRef.current = requestAnimationFrame(updateFrame);
     };
@@ -153,27 +147,38 @@ export const HeroActiveCard: React.FC<HeroActiveCardProps> = ({
 
   /**
    * Multi-thread Chunk Segmentation Logic (Parity with IDM & Rheow Reversed Engine):
-   * 1. If active download has real segments emitted from Rust Tokio worker threads, use them directly.
+   * 1. The Rust engine splits a download into more work-queue chunks than
+   *    connections, so a fast connection can claim extra work. Stripe those
+   *    chunks across at most `maxConnections` visual lanes (chunk index % lane)
+   *    so every lane advances concurrently, like IDM's parallel parts.
    * 2. If fallback or preview, generate exactly `maxConnections` segments (e.g. 8).
    * 3. In IDM, all parts download SIMULTANEOUSLY in parallel from start to finish, NOT one by one.
    *    Each part has its own live progress filling up concurrently, and once all parts reach 100%,
    *    they are assembled into the complete target file.
    */
-  const connectionCount =
-    currentItem.segments && currentItem.segments.length > 0
-      ? currentItem.segments.length
-      : maxConnections;
+  const rawSegments = currentItem.segments ?? [];
+  const hasRealSegments = rawSegments.length > 0;
+  const visualBars = Math.max(1, maxConnections);
+  const connectionCount = hasRealSegments
+    ? Math.min(rawSegments.length, visualBars)
+    : visualBars;
 
-  const segments: { index: number; percent: number }[] =
-    currentItem.segments && currentItem.segments.length > 0
-      ? currentItem.segments.map((seg: any, idx: number) => ({
-          index: idx,
+  const segments: { index: number; percent: number }[] = hasRealSegments
+    ? Array.from({ length: connectionCount }).map((_, lane: number) => {
+        const members = rawSegments.filter((_, idx) => idx % connectionCount === lane);
+        const average =
+          members.reduce((sum, seg) => sum + extractSegmentProgress(seg), 0) /
+          Math.max(1, members.length);
+
+        return {
+          index: lane,
           percent:
             isCompleted || progressPercent >= 100
               ? 100
-              : Math.min(100, Math.max(0, Math.round(extractSegmentProgress(seg)))),
-        }))
-      : Array.from({ length: connectionCount }).map((_, idx: number) => {
+              : Math.min(100, Math.max(0, Math.round(average))),
+        };
+      })
+    : Array.from({ length: connectionCount }).map((_, idx: number) => {
           if (isCompleted || progressPercent >= 100) return { index: idx, percent: 100 };
           if (progressPercent <= 0) return { index: idx, percent: 0 };
 

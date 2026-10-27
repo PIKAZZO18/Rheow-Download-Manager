@@ -864,10 +864,12 @@ async fn execute_download(
             });
         }
     } else {
-        // Fresh download: ceil-divide so no segment is empty.
+        // Fresh download: split into small work-queue chunks. More chunks than
+        // connections let a fast connection pick up extra work instead of
+        // idling while a slow connection is still finishing its fixed range.
         let mut init_db_segments = Vec::new();
 
-        for (index, start, end) in plan_segments(total_size as u64, connections) {
+        for (index, start, end) in plan_chunks(total_size as u64, connections) {
             init_db_segments.push((index, start, end, start, false));
             segment_atoms.push(Arc::new(AtomicU64::new(start)));
             segment_configs.push(SegmentConfig {
@@ -884,16 +886,23 @@ async fn execute_download(
         return Err("No byte ranges could be generated for this download".to_string());
     }
 
-    // Snapshot the ranges before moving them into the worker tasks.
+    // Snapshot the ranges for progress reporting and final verification.
     let configs_snapshot = segment_configs.clone();
     let atoms_snapshot = segment_atoms.clone();
 
+    // Fixed worker pool pulling chunk indices from a shared cursor. This keeps
+    // at most `connections` requests in flight while letting a fast worker
+    // claim the next chunk as soon as it finishes.
+    let shared_configs = Arc::new(segment_configs);
+    let shared_atoms = Arc::new(segment_atoms);
+    let next_chunk = Arc::new(AtomicUsize::new(0));
+    let worker_count = connections.min(shared_configs.len()).max(1);
+
     let mut worker_handles = Vec::new();
-    for (idx, cfg) in segment_configs.into_iter().enumerate() {
+    for _ in 0..worker_count {
         let worker_client = client.clone();
         let worker_url = url.clone();
         let worker_path = path.clone();
-        let worker_atom = segment_atoms[idx].clone();
         let worker_cancel = cancel_flag.clone();
         let worker_cookie = cookie.clone();
         let worker_referer = referer.clone();
@@ -901,24 +910,41 @@ async fn execute_download(
         let worker_limiter = limiter_clone.clone();
         let worker_global_limiter = global_limiter_clone.clone();
         let worker_tx = tx.clone();
+        let worker_configs = shared_configs.clone();
+        let worker_atoms = shared_atoms.clone();
+        let worker_cursor = next_chunk.clone();
 
         worker_handles.push(tokio::spawn(async move {
-            run_segment_worker(
-                worker_client,
-                worker_url,
-                worker_path,
-                cfg,
-                worker_atom,
-                worker_cancel,
-                worker_cookie,
-                worker_referer,
-                worker_etag,
-                max_retries,
-                Some(worker_limiter),
-                Some(worker_global_limiter),
-                worker_tx,
-            )
-            .await
+            loop {
+                let idx = worker_cursor.fetch_add(1, Ordering::Relaxed);
+                if idx >= worker_configs.len() {
+                    break;
+                }
+                if worker_cancel.load(Ordering::Relaxed) {
+                    break;
+                }
+
+                let cfg = worker_configs[idx].clone();
+                let atom = worker_atoms[idx].clone();
+
+                run_segment_worker(
+                    worker_client.clone(),
+                    worker_url.clone(),
+                    worker_path.clone(),
+                    cfg,
+                    atom,
+                    worker_cancel.clone(),
+                    worker_cookie.clone(),
+                    worker_referer.clone(),
+                    worker_etag.clone(),
+                    max_retries,
+                    Some(worker_limiter.clone()),
+                    Some(worker_global_limiter.clone()),
+                    worker_tx.clone(),
+                )
+                .await?;
+            }
+            Ok(())
         }));
     }
 
@@ -1444,6 +1470,42 @@ fn resume_check(
     !validators_lost
 }
 
+/// Target size for one work-queue chunk. Smaller chunks let the scheduler
+/// rebalance work quickly when connections have different throughput.
+const SCHEDULER_CHUNK_BYTES: u64 = 1024 * 1024;
+
+/// Upper bound on chunk rows so checkpoint writes and progress events stay
+/// cheap even for very large files.
+const SCHEDULER_MAX_CHUNKS: usize = 256;
+
+/// Splits a download into work-queue chunks. The number of chunks is larger
+/// than the number of connections (except for a single connection) so that a
+/// fast connection can claim another chunk as soon as it finishes, instead of
+/// waiting for a slow connection that owns the rest of a fixed range.
+fn plan_chunks(total_size: u64, connections: usize) -> Vec<(usize, u64, u64)> {
+    if total_size == 0 || connections == 0 {
+        return Vec::new();
+    }
+
+    let connections = connections.min(total_size as usize).max(1);
+    if connections == 1 {
+        // A single connection cannot rebalance; extra chunks would only add
+        // request overhead.
+        return plan_segments(total_size, 1);
+    }
+
+    let chunks_by_size =
+        ((total_size + SCHEDULER_CHUNK_BYTES - 1) / SCHEDULER_CHUNK_BYTES) as usize;
+    let max_chunks = connections.saturating_mul(32).min(SCHEDULER_MAX_CHUNKS);
+    let chunk_count = chunks_by_size
+        .max(connections)
+        .min(max_chunks)
+        .min(total_size as usize)
+        .max(1);
+
+    plan_segments(total_size, chunk_count)
+}
+
 /// Splits `total_size` bytes into contiguous, non-empty ranges.
 /// Uses ceil division so the final range absorbs any remainder.
 fn plan_segments(total_size: u64, connections: usize) -> Vec<(usize, u64, u64)> {
@@ -1570,7 +1632,7 @@ fn format_eta(seconds: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_eta, plan_segments, resume_check};
+    use super::{format_eta, plan_chunks, plan_segments, resume_check};
 
     fn assert_contiguous(total: u64, ranges: &[(usize, u64, u64)]) {
         assert!(!ranges.is_empty());
@@ -1618,6 +1680,38 @@ mod tests {
         let ranges = plan_segments(3, 32);
         assert_eq!(ranges.len(), 3);
         assert_contiguous(3, &ranges);
+    }
+
+    #[test]
+    fn plan_chunks_adds_work_for_multiple_connections() {
+        let total = 32 * 1024 * 1024;
+        let ranges = plan_chunks(total, 8);
+        assert!(ranges.len() > 8, "chunk queue must exceed connections");
+        assert_contiguous(total, &ranges);
+    }
+
+    #[test]
+    fn plan_chunks_keeps_single_connection_sequential() {
+        let total = 10 * 1024 * 1024;
+        let ranges = plan_chunks(total, 1);
+        assert_eq!(ranges.len(), 1);
+        assert_contiguous(total, &ranges);
+    }
+
+    #[test]
+    fn plan_chunks_caps_request_count() {
+        let total: u64 = 10 * 1024 * 1024 * 1024;
+        let ranges = plan_chunks(total, 8);
+        assert!(ranges.len() <= 256);
+        assert!(ranges.len() >= 8);
+        assert_contiguous(total, &ranges);
+    }
+
+    #[test]
+    fn plan_chunks_covers_tiny_files() {
+        let ranges = plan_chunks(10, 8);
+        assert_eq!(ranges.len(), 5);
+        assert_contiguous(10, &ranges);
     }
 
     #[test]

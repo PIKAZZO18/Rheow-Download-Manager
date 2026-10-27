@@ -655,7 +655,7 @@ export const DownloadFileInfoModal: React.FC<DownloadFileInfoModalProps> = ({
                 </span>
                 <span className="text-[10px] text-[#737373] truncate">
                   {supportsRange
-                    ? `${segmentCount} multi-threaded chunks for accelerated download speed`
+                    ? `${segmentCount} parallel streams for accelerated download speed`
                     : 'Server does not support range resume (Single stream only)'}
                 </span>
               </div>
