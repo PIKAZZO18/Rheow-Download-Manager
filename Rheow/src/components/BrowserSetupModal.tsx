@@ -7,7 +7,6 @@ import {
   Copy,
   Check,
   Globe,
-  ShieldCheck,
   CheckCircle2,
   Loader2,
   AlertCircle,
@@ -321,18 +320,13 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
         <div className="px-5 py-4 overflow-y-auto min-h-[318px]">
           {step === 1 && (
             <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className={`${iconTile} w-10 h-10 bg-blue-50 border-blue-100 text-[#2563eb]`}>
-                  <Globe className="w-5 h-5 stroke-[2]" />
+              <div className="flex items-center gap-2.5">
+                <div className={`${iconTile} w-8 h-8 bg-blue-50 border-blue-100 text-[#2563eb]`}>
+                  <Globe className="w-4 h-4 stroke-[2]" />
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-[#171717]">
-                    Add Rheow to {browserName}
-                  </h3>
-                  <p className="text-[11px] text-[#737373] leading-relaxed mt-0.5">
-                    Open your browser extensions tab, enable Developer mode, then load the unpacked folder below.
-                  </p>
-                </div>
+                <h3 className="text-sm font-semibold text-[#171717]">
+                  Add Rheow to {browserName}
+                </h3>
               </div>
 
               <div className="flex items-center gap-2">
@@ -476,14 +470,6 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                       : 'This turns green automatically right after you click Load unpacked in your browser.'}
                   </p>
                 </div>
-              </div>
-
-              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[#fafafa] border border-[#e5e5e5] text-[10px] text-[#737373] leading-relaxed">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#16a34a] shrink-0 mt-0.5" />
-                <span>
-                  The local bridge only accepts requests from the Rheow extension. Regular websites
-                  cannot send downloads to Rheow.
-                </span>
               </div>
 
               {checkMessage && (
