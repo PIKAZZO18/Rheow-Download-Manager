@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.
 - Combined the extensions address bar, copy action, and browser launch button into a single compact toolbar in the setup wizard.
 - Removed repetitive setup subtitle copy and redundant bridge security note from the browser integration wizard for a cleaner, high-focus layout.
+- Removed the redundant static "Connect the extension" instruction card from the Settings Browser tab in favor of the interactive guided setup wizard.
 
 ## [1.0.2] - 2026-10-27
 

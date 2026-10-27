@@ -1043,44 +1043,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 space-y-2">
-              <span className="text-xs font-semibold text-[#171717] block">
-                Connect the extension
-              </span>
-              <ol className="space-y-1.5 text-[11px] text-[#525252] leading-relaxed">
-                <li className="flex gap-2">
-                  <span className="w-4 h-4 rounded-full bg-white border border-[#e5e5e5] text-[9px] font-semibold text-[#171717] flex items-center justify-center shrink-0 mt-0.5">
-                    1
-                  </span>
-                  <span>
-                    Open <code className="font-mono text-[10px] text-[#171717]">chrome://extensions</code> or{' '}
-                    <code className="font-mono text-[10px] text-[#171717]">edge://extensions</code>.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="w-4 h-4 rounded-full bg-white border border-[#e5e5e5] text-[9px] font-semibold text-[#171717] flex items-center justify-center shrink-0 mt-0.5">
-                    2
-                  </span>
-                  <span>
-                    Turn on <strong className="font-semibold text-[#171717]">Developer mode</strong>.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="w-4 h-4 rounded-full bg-white border border-[#e5e5e5] text-[9px] font-semibold text-[#171717] flex items-center justify-center shrink-0 mt-0.5">
-                    3
-                  </span>
-                  <span>
-                    Click <strong className="font-semibold text-[#171717]">Load unpacked</strong> and
-                    select the extension folder above.
-                  </span>
-                </li>
-              </ol>
-              <p className="text-[10px] text-[#737373] leading-relaxed">
-                The bridge only accepts requests from the Rheow extension and rejects normal web
-                pages.
-              </p>
-            </div>
-
             {browserError && (
               <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-50/80 border border-red-200/60 text-red-700 text-[11px]">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
