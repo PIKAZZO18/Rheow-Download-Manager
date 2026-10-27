@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The Local Bridge card no longer shows the request counter and last-request
+  line.
+- The Updates tab no longer shows the signature and database-backup footer.
+
 ## [1.0.2] - 2026-10-27
 
 ### Added

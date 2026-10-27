@@ -79,13 +79,6 @@ interface BrowserIntegrationStatus {
   extension_version: string | null;
 }
 
-const formatBridgeTime = (iso: string) => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? iso
-    : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-};
-
 const CATEGORY_ICONS: Record<CategorySubfolderKey, React.ReactNode> = {
   Compressed: <Archive className="w-3.5 h-3.5 text-[#7c3aed] stroke-[2] shrink-0" />,
   Programs: <Terminal className="w-3.5 h-3.5 text-[#2563eb] stroke-[2] shrink-0" />,
@@ -1005,30 +998,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </span>
                 <span className="ml-auto text-[10px] text-[#737373] shrink-0">
                   {bridge ? `port ${bridge.port}` : 'port 41789'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 text-[11px] text-[#737373]">
-                <span className="truncate">
-                  {bridge && bridge.request_count > 0
-                    ? `${bridge.request_count} request${
-                        bridge.request_count === 1 ? '' : 's'
-                      } received`
-                    : 'Waiting for the extension...'}
-                </span>
-                <span
-                  className="font-mono text-[10px] truncate"
-                  title={
-                    bridge?.last_request
-                      ? `${bridge.last_request.method} ${bridge.last_request.path}`
-                      : undefined
-                  }
-                >
-                  {bridge?.last_request
-                    ? `${bridge.last_request.method} ${
-                        bridge.last_request.path
-                      } · ${formatBridgeTime(bridge.last_request.at)}`
-                    : 'No requests yet'}
                 </span>
               </div>
             </div>

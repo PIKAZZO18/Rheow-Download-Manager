@@ -4,7 +4,6 @@ import {
   DownloadCloud,
   Loader2,
   RefreshCw,
-  ShieldCheck,
 } from 'lucide-react';
 import type { UpdateState, UpdaterSettings } from '../types/updater';
 import { formatBytes } from '../utils/format';
@@ -214,14 +213,6 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
           <span className="leading-relaxed">{state.error}</span>
         </div>
       )}
-
-      <div className="flex items-start gap-2.5 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3.5 py-3">
-        <ShieldCheck className="w-4 h-4 text-[#16a34a] stroke-[2.2] shrink-0 mt-0.5" />
-        <p className="text-[10px] text-[#737373] leading-relaxed">
-          Updates are signed and verified. A database backup is saved to{' '}
-          <span className="font-mono">%APPDATA%\Rheow\backups</span> before each install.
-        </p>
-      </div>
     </div>
   );
 };
