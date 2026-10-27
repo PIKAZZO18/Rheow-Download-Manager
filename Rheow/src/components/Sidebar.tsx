@@ -34,18 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectCategory,
   counts,
 }) => {
-  const [partitions, setPartitions] = useState<PartitionInfo[]>([
-    {
-      letter: 'C:',
-      name: 'Local SSD (C:)',
-      total_bytes: 1_000_000_000_000,
-      free_bytes: 348_000_000_000,
-      used_bytes: 652_000_000_000,
-      free_display: '348 GB free',
-      used_display: '652 GB / 1.0 TB used',
-      usage_percentage: 65.2,
-    },
-  ]);
+  const [partitions, setPartitions] = useState<PartitionInfo[]>([]);
 
   useEffect(() => {
     const fetchPartitions = async () => {
@@ -112,7 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside className="w-[215px] lg:w-[250px] shrink-0 border-r border-[#e5e5e5] bg-white flex flex-col justify-between py-4 px-2.5 sm:px-3 select-none h-full overflow-hidden transition-[width] duration-200">
       {/* Top Nav Content */}
-      <div className="flex flex-col gap-3 sm:gap-4 overflow-y-auto">
+      <div className="flex flex-col gap-3 sm:gap-4 overflow-y-auto min-h-0">
         <div className="flex flex-col gap-1">
           <div className="px-2 text-[11px] font-semibold text-[#737373] tracking-[0.5px] uppercase">
             CATEGORIES
@@ -169,7 +158,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Auto-detected Partition Cards at the Bottom (Protected from vertical overflow) */}
-      <div className="flex flex-col gap-2.5 pt-2.5 shrink-0 max-h-[200px] overflow-y-auto pr-0.5">
+      <div className="flex flex-col gap-2.5 pt-2.5 shrink-0 max-h-[50vh] overflow-y-auto pr-0.5">
         {partitions.map((part) => (
           <div
             key={part.letter}
@@ -179,7 +168,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 min-w-0">
                 <HardDrive className="w-[13px] h-[13px] text-[#171717] stroke-[2] shrink-0" />
-                <span className="text-[11px] lg:text-xs font-semibold text-[#171717] truncate">
+                <span
+                  className="text-[11px] lg:text-xs font-semibold text-[#171717] truncate"
+                  title={part.name}
+                >
                   {part.name}
                 </span>
               </div>
