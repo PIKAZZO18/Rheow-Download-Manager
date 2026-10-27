@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Removed the redundant browser integration card from the browser setup completion step, leaving a clean and uncluttered confirmation screen.
+- Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.
+- Combined the extensions address bar, copy action, and browser launch button into a single compact toolbar in the setup wizard.
 
 ## [1.0.2] - 2026-10-27
 

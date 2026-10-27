@@ -3,12 +3,9 @@ import { invoke } from '@tauri-apps/api/core';
 import { RheowLogo } from './brand/RheowLogo';
 import {
   X,
-  Puzzle,
   FolderOpen,
   Copy,
   Check,
-  ArrowRight,
-  ArrowLeft,
   Globe,
   ShieldCheck,
   CheckCircle2,
@@ -46,14 +43,13 @@ interface BrowserLaunchInfo {
   copied: boolean;
 }
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 type BusyAction = 'browser' | 'folder' | 'copy' | 'check' | null;
 type CopiedField = 'path' | 'url' | null;
 
 const STEPS: Array<{ id: Step; label: string }> = [
-  { id: 1, label: 'Extension files' },
-  { id: 2, label: 'Install in browser' },
-  { id: 3, label: 'Done' },
+  { id: 1, label: 'Install in browser' },
+  { id: 2, label: 'Done' },
 ];
 
 const primaryButton =
@@ -139,7 +135,7 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
 
         if (isConnected) {
           setCheckMessage(null);
-          setStep((current) => (current < 3 ? 3 : current));
+          setStep(2);
         }
       } catch {
         // A transient failure while the app is starting is harmless; the next
@@ -216,11 +212,11 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
   };
 
   const handleCopyAddress = async () => {
-    if (!launch?.extensions_url) return;
+    const targetUrl = launch?.extensions_url || 'chrome://extensions';
     setBusy('copy');
     setError(null);
     try {
-      await invoke('copy_text_to_clipboard', { text: launch.extensions_url });
+      await invoke('copy_text_to_clipboard', { text: targetUrl });
       flashCopied('url');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -238,7 +234,7 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
       const isConnected = status.bridge?.extension_connected ?? false;
       setConnected(isConnected);
       if (isConnected) {
-        setStep(3);
+        setStep(2);
       } else {
         setCheckMessage(
           'Not detected yet. Make sure Developer mode is on, the extension is enabled, and Rheow is still running.'
@@ -324,84 +320,6 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
         {/* Body */}
         <div className="px-5 py-4 overflow-y-auto min-h-[318px]">
           {step === 1 && (
-            <div className="space-y-3.5">
-              <div className="flex items-start gap-3">
-                <div className={`${iconTile} w-10 h-10 bg-violet-50 border-violet-100 text-[#7c3aed]`}>
-                  <Puzzle className="w-5 h-5 stroke-[2]" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-[#171717]">
-                    Your extension is already on this PC
-                  </h3>
-                  <p className="text-[11px] text-[#737373] leading-relaxed mt-0.5">
-                    Rheow shipped it with the installer and copied it to a folder you can open
-                    directly. You will not need to search through Program Files.
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-[#e5e5e5] bg-white overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-[#f0f0f0]">
-                  <span className="text-[10px] uppercase tracking-wide font-semibold text-[#737373]">
-                    Extension folder
-                  </span>
-                  <span className="text-[10px] font-mono text-[#737373]">v{extensionVersion}</span>
-                </div>
-                <div className="p-2.5 flex items-center gap-2">
-                  <div
-                    className="flex-1 min-w-0 h-8 px-2.5 rounded-lg border border-[#e5e5e5] bg-[#fafafa] font-mono text-[10px] text-[#525252] flex items-center select-text"
-                    title={extensionPath ?? undefined}
-                  >
-                    <span className="truncate">
-                      {extensionPath ?? 'Preparing the extension folder…'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleCopyPath}
-                    disabled={!extensionPath || busy === 'copy'}
-                    className={secondaryButton}
-                  >
-                    {copiedField === 'path' ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 stroke-[2.4] text-emerald-600" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 stroke-[2]" />
-                        Copy
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleOpenFolder}
-                disabled={busy === 'folder'}
-                className="w-full h-9 rounded-xl border border-[#e5e5e5] bg-[#fafafa] hover:bg-[#f5f5f5] text-[#171717] text-xs font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {busy === 'folder' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <FolderOpen className="w-3.5 h-3.5 stroke-[2]" />
-                )}
-                Open extension folder
-              </button>
-
-              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[#fafafa] border border-[#e5e5e5] text-[10px] text-[#737373] leading-relaxed">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#16a34a] shrink-0 mt-0.5" />
-                <span>
-                  The local bridge only accepts requests from the Rheow extension. Regular websites
-                  cannot send downloads to Rheow.
-                </span>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <div className={`${iconTile} w-10 h-10 bg-blue-50 border-blue-100 text-[#2563eb]`}>
@@ -412,8 +330,7 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                     Add Rheow to {browserName}
                   </h3>
                   <p className="text-[11px] text-[#737373] leading-relaxed mt-0.5">
-                    Open your browser, paste the extensions address, then load the folder below.
-                    The address is copied for you automatically.
+                    Open your browser extensions tab, enable Developer mode, then load the unpacked folder below.
                   </p>
                 </div>
               </div>
@@ -428,9 +345,9 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                 <button
                   type="button"
                   onClick={handleCopyAddress}
-                  disabled={!launch || busy === 'copy'}
+                  disabled={busy === 'copy'}
                   className={secondaryButton}
-                  title={launch ? 'Copy extensions address' : 'Open the browser first'}
+                  title="Copy extensions address"
                 >
                   {copiedField === 'url' ? (
                     <>
@@ -444,21 +361,20 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                     </>
                   )}
                 </button>
+                <button
+                  type="button"
+                  onClick={handleOpenBrowser}
+                  disabled={busy === 'browser'}
+                  className={`${primaryButton} shrink-0`}
+                >
+                  {busy === 'browser' ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <ExternalLink className="w-3.5 h-3.5 stroke-[2]" />
+                  )}
+                  {launch ? `Open ${launch.browser}` : 'Open browser'}
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={handleOpenBrowser}
-                disabled={busy === 'browser'}
-                className={`${primaryButton} w-full h-9 rounded-xl`}
-              >
-                {busy === 'browser' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ExternalLink className="w-3.5 h-3.5 stroke-[2]" />
-                )}
-                {launch ? `Open ${launch.browser} again` : 'Open browser'}
-              </button>
 
               <ol className="space-y-1.5 text-[11px] text-[#525252] leading-relaxed">
                 <li className="flex gap-2">
@@ -487,14 +403,16 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                   </span>
                   <span>
                     Click <strong className="font-semibold text-[#171717]">Load unpacked</strong>,
-                    then paste the copied folder path into the picker with{' '}
-                    <strong className="font-semibold text-[#171717]">Ctrl+V</strong> and press
-                    Enter.
+                    then select or paste this extension folder:
                   </span>
                 </li>
               </ol>
 
               <div className="rounded-xl border border-[#e5e5e5] bg-white p-2.5 space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-semibold text-[#737373] px-0.5">
+                  <span>Extension folder</span>
+                  <span className="font-mono text-[#a3a3a3]">v{extensionVersion}</span>
+                </div>
                 <div
                   className="w-full min-w-0 h-8 px-2.5 rounded-lg border border-[#e5e5e5] bg-[#fafafa] font-mono text-[10px] text-[#525252] flex items-center select-text"
                   title={extensionPath ?? undefined}
@@ -550,23 +468,34 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                 )}
                 <div className="min-w-0">
                   <p className="font-semibold">
-                    {connected ? 'Extension connected' : 'Waiting for the extension'}
+                    {connected ? 'Extension connected' : 'Waiting for connection'}
                   </p>
                   <p className={connected ? 'text-emerald-700' : 'text-[#92400e]/90'}>
                     {connected
                       ? 'Rheow can now receive downloads from your browser.'
-                      : 'This turns green automatically right after you click Load unpacked.'}
+                      : 'This turns green automatically right after you click Load unpacked in your browser.'}
                   </p>
                 </div>
               </div>
 
+              <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[#fafafa] border border-[#e5e5e5] text-[10px] text-[#737373] leading-relaxed">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#16a34a] shrink-0 mt-0.5" />
+                <span>
+                  The local bridge only accepts requests from the Rheow extension. Regular websites
+                  cannot send downloads to Rheow.
+                </span>
+              </div>
+
               {checkMessage && (
-                <p className="text-[10px] text-[#92400e] leading-relaxed">{checkMessage}</p>
+                <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[10px] leading-relaxed">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <span>{checkMessage}</span>
+                </div>
               )}
             </div>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <div className="flex flex-col items-center text-center py-6">
               <div className="w-14 h-14 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
                 <Check className="w-7 h-7 stroke-[2.6]" />
@@ -599,30 +528,11 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
             onClick={onClose}
             className="text-xs text-[#737373] hover:text-[#171717] hover:underline cursor-pointer"
           >
-            {step === 3 ? 'Close' : 'Later'}
+            {step === 2 ? 'Close' : 'Later'}
           </button>
 
           <div className="flex items-center gap-2">
-            {step === 2 && (
-              <button type="button" onClick={() => setStep(1)} className={secondaryButton}>
-                <ArrowLeft className="w-3.5 h-3.5 stroke-[2]" />
-                Back
-              </button>
-            )}
-
-            {step === 1 && (
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                disabled={!extensionPath}
-                className={primaryButton}
-              >
-                Continue
-                <ArrowRight className="w-3.5 h-3.5 stroke-[2]" />
-              </button>
-            )}
-
-            {step === 2 && (
+            {step === 1 ? (
               <button
                 type="button"
                 onClick={handleCheckConnection}
@@ -634,11 +544,9 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                 ) : (
                   <CheckCircle2 className="w-3.5 h-3.5 stroke-[2]" />
                 )}
-                I've installed it
+                Check connection
               </button>
-            )}
-
-            {step === 3 && (
+            ) : (
               <button type="button" onClick={onClose} className={primaryButton}>
                 Done
                 <Check className="w-3.5 h-3.5 stroke-[2.6]" />
