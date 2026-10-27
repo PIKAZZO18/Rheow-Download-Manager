@@ -578,19 +578,29 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
               </p>
 
               <div className="w-full mt-4 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 text-left">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-3.5 h-3.5 text-[#16a34a] stroke-[2]" />
-                    <span className="text-xs font-semibold text-[#171717]">
-                      Browser integration
-                    </span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-[#e5e5e5] flex items-center justify-center text-[#16a34a] shrink-0 shadow-2xs">
+                      <Globe className="w-4 h-4 stroke-[2]" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-[#171717]">
+                          Browser integration
+                        </span>
+                        <span className="text-[10px] font-medium text-[#737373] bg-white border border-[#e5e5e5] px-1.5 py-0.5 rounded-md shrink-0">
+                          v{extensionVersion}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#737373] truncate mt-0.5">
+                        {launch?.browser ? `Active in ${launch.browser}` : 'Local bridge connected'}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                     Connected
                   </span>
-                </div>
-                <div className="mt-2 flex items-center justify-end gap-2 text-[10px] text-[#737373]">
-                  <span className="font-mono shrink-0">Extension v{extensionVersion}</span>
                 </div>
               </div>
 

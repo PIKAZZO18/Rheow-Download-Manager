@@ -141,7 +141,7 @@ Rheow never installs an update silently. When an update is available you can:
 3. Rheow backs up the database to `%APPDATA%\Rheow\backups`, launches the
    installer, and restarts after it finishes.
 
-Automatic checks can be disabled in **Settings → Updates**. Manual **Check now**
+Automatic checks can be disabled in **Settings → Updates**. Manual **Check for Update**
 remains available. Release metadata is read from
 `https://github.com/PIKAZZO18/Rheow-Download-Manager/releases/latest/download/latest.json`.
 

@@ -7,22 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+### Fixed
 
-- The Local Bridge card no longer shows the request counter and last-request
-  line.
-- The Updates tab no longer shows the signature and database-backup footer.
-- The Connection tab no longer repeats the selected stream count next to
-  **Default Max. Connection Number**. The browser setup wizard drops the
-  "one-time setup" subtitle and the browser-name label, and the guided-setup
-  card shows only its title.
+- Fixed lopsided and unbalanced layout in the browser setup completion card by structuring the icon, version badge, and active status into a balanced two-line hierarchy with a vertically centered connection badge.
 
 ## [1.0.2] - 2026-10-27
 
 ### Added
 
 - Automatic update checks shortly after startup and every 24 hours, plus a
-  **Check now** button in **Settings → Updates**.
+  **Check for Update** button in **Settings → Updates**.
+- A confirmation in **Settings → Updates** when Rheow is already running the
+  latest version.
 - An in-app update banner with release notes and explicit **Download** and
   **Install now** actions. Rheow never downloads or installs an update silently.
 - Signed update verification before installation, and a verified database
@@ -50,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uninstall/reinstall to move to the per-user layout.
 - The **Updates** settings tab and update banner are more compact: repeated
   status text, the channel badge, and a duplicate dismiss button were removed.
+- The Local Bridge card no longer shows the request counter and last-request
+  line, and the Updates tab no longer shows the signature and database-backup
+  footer.
+- The Connection tab no longer repeats the selected stream count next to
+  **Default Max. Connection Number**. The browser setup wizard drops the
+  "one-time setup" subtitle and the browser-name label, and the guided-setup
+  card shows only its title.
 
 ## [1.0.0] - 2026-10-26
 

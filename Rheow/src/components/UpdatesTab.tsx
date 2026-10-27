@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   AlertCircle,
+  CheckCircle2,
   DownloadCloud,
   Loader2,
   RefreshCw,
@@ -34,7 +35,7 @@ const phaseLabel = (state: UpdateState): string => {
     case 'checking':
       return 'Checking for updates…';
     case 'upToDate':
-      return "You're up to date";
+      return '';
     case 'available':
       return `Version ${state.info?.version ?? ''} is available`;
     case 'downloading':
@@ -108,7 +109,7 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
             ) : (
               <RefreshCw className="w-3.5 h-3.5 stroke-[2.2]" />
             )}
-            {state.phase === 'checking' ? 'Checking…' : 'Check now'}
+            {state.phase === 'checking' ? 'Checking…' : 'Check for Update'}
           </button>
 
           {state.phase === 'available' && (
@@ -149,6 +150,13 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
           Last checked: {formatCheckedAt(state.settings.lastCheckAt)}
         </p>
       </div>
+
+      {state.phase === 'upToDate' && (
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/60 text-emerald-700 text-[11px]">
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+          <span>Rheow {state.currentVersion} is the latest version.</span>
+        </div>
+      )}
 
       <label className="flex items-center justify-between p-3.5 rounded-xl border border-[#e5e5e5] bg-[#fafafa] cursor-pointer hover:bg-neutral-100/50 transition-colors">
         <div className="flex items-center gap-2.5">
