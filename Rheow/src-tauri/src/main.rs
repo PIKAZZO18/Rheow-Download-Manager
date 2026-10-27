@@ -280,7 +280,6 @@ struct ExtensionSetupInfo {
 struct BrowserLaunchInfo {
     browser: String,
     extensions_url: String,
-    copied: bool,
 }
 
 /// The extension ships as a bundle resource in installed builds. During
@@ -547,22 +546,243 @@ fn open_extension_folder(app: AppHandle) -> Result<ExtensionSetupInfo, String> {
     Ok(info)
 }
 
+/// Handles of the visible top-level windows owned by the given executable.
+/// Captured before launching so the helper can tell the new window apart from
+/// windows the user already had open.
+#[cfg(target_os = "windows")]
+fn browser_window_handles(executable: &Path) -> Vec<isize> {
+    use std::ffi::c_void;
+
+    extern "system" {
+        fn EnumWindows(
+            callback: extern "system" fn(*mut c_void, isize) -> i32,
+            lparam: isize,
+        ) -> i32;
+        fn IsWindowVisible(hwnd: *mut c_void) -> i32;
+        fn GetWindowThreadProcessId(hwnd: *mut c_void, pid: *mut u32) -> u32;
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut c_void;
+        fn QueryFullProcessImageNameW(
+            process: *mut c_void,
+            flags: u32,
+            name: *mut u16,
+            size: *mut u32,
+        ) -> i32;
+        fn CloseHandle(handle: *mut c_void) -> i32;
+    }
+
+    extern "system" fn collect(hwnd: *mut c_void, lparam: isize) -> i32 {
+        unsafe {
+            if IsWindowVisible(hwnd) != 0 {
+                let mut pid = 0u32;
+                GetWindowThreadProcessId(hwnd, &mut pid);
+                if pid != 0 {
+                    (*(lparam as *mut Vec<(isize, u32)>)).push((hwnd as isize, pid));
+                }
+            }
+        }
+        1
+    }
+
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+
+    let target = executable.to_string_lossy().to_string();
+    let mut windows: Vec<(isize, u32)> = Vec::new();
+    unsafe {
+        EnumWindows(collect, &mut windows as *mut _ as isize);
+    }
+
+    let mut checked: HashMap<u32, bool> = HashMap::new();
+    windows
+        .into_iter()
+        .filter_map(|(hwnd, pid)| {
+            let belongs = *checked.entry(pid).or_insert_with(|| unsafe {
+                let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+                if process.is_null() {
+                    return false;
+                }
+                let mut buffer = [0u16; 1024];
+                let mut len = buffer.len() as u32;
+                let ok = QueryFullProcessImageNameW(process, 0, buffer.as_mut_ptr(), &mut len);
+                CloseHandle(process);
+                ok != 0
+                    && String::from_utf16_lossy(&buffer[..len as usize])
+                        .eq_ignore_ascii_case(&target)
+            });
+            belongs.then_some(hwnd)
+        })
+        .collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn browser_window_handles(_executable: &Path) -> Vec<isize> {
+    Vec::new()
+}
+
+#[cfg(target_os = "windows")]
+fn navigate_browser_to_extensions(executable: PathBuf, existing: Vec<isize>, url: String) {
+    use std::ffi::c_void;
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct KeybdInput {
+        w_vk: u16,
+        w_scan: u16,
+        dw_flags: u32,
+        time: u32,
+        dw_extra_info: usize,
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    union InputUnion {
+        ki: KeybdInput,
+        // MOUSEINPUT is 32 bytes on x64. Keep the union the same size so
+        // SendInput receives correctly sized INPUT records.
+        _pad: [usize; 4],
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct Input {
+        input_type: u32,
+        union: InputUnion,
+    }
+
+    extern "system" {
+        fn SendInput(c_inputs: u32, p_inputs: *const Input, cb_size: i32) -> u32;
+        fn GetForegroundWindow() -> *mut c_void;
+        fn Sleep(ms: u32);
+    }
+
+    const INPUT_KEYBOARD: u32 = 1;
+    const KEYEVENTF_KEYUP: u32 = 0x0002;
+    const KEYEVENTF_UNICODE: u32 = 0x0004;
+    const VK_CONTROL: u16 = 0x11;
+    const VK_L: u16 = 0x4C;
+    const VK_RETURN: u16 = 0x0D;
+
+    fn key(vk: u16, up: bool) -> Input {
+        Input {
+            input_type: INPUT_KEYBOARD,
+            union: InputUnion {
+                ki: KeybdInput {
+                    w_vk: vk,
+                    w_scan: 0,
+                    dw_flags: if up { KEYEVENTF_KEYUP } else { 0 },
+                    time: 0,
+                    dw_extra_info: 0,
+                },
+            },
+        }
+    }
+
+    fn character(code_unit: u16, up: bool) -> Input {
+        Input {
+            input_type: INPUT_KEYBOARD,
+            union: InputUnion {
+                ki: KeybdInput {
+                    w_vk: 0,
+                    w_scan: code_unit,
+                    dw_flags: KEYEVENTF_UNICODE | if up { KEYEVENTF_KEYUP } else { 0 },
+                    time: 0,
+                    dw_extra_info: 0,
+                },
+            },
+        }
+    }
+
+    std::thread::spawn(move || unsafe {
+        // Chromium ignores `chrome://` URLs on the command line, so wait for
+        // the window this launch created and drive its address bar instead.
+        let mut target = 0isize;
+        for _ in 0..100 {
+            if let Some(hwnd) = browser_window_handles(&executable)
+                .into_iter()
+                .find(|handle| !existing.contains(handle))
+            {
+                target = hwnd;
+                break;
+            }
+            Sleep(100);
+        }
+
+        if target == 0 {
+            return;
+        }
+
+        // Only type while that exact window is in front. If the user switched
+        // to another app or another browser window, send nothing at all.
+        let mut focused = false;
+        for _ in 0..30 {
+            if GetForegroundWindow() as isize == target {
+                focused = true;
+                break;
+            }
+            Sleep(100);
+        }
+
+        if !focused {
+            return;
+        }
+
+        let size = std::mem::size_of::<Input>() as i32;
+
+        Sleep(400);
+        let focus = [
+            key(VK_CONTROL, false),
+            key(VK_L, false),
+            key(VK_L, true),
+            key(VK_CONTROL, true),
+        ];
+        SendInput(focus.len() as u32, focus.as_ptr(), size);
+
+        Sleep(250);
+        let mut address = Vec::with_capacity(url.len() * 2);
+        for code_unit in url.encode_utf16() {
+            address.push(character(code_unit, false));
+            address.push(character(code_unit, true));
+        }
+        SendInput(address.len() as u32, address.as_ptr(), size);
+
+        Sleep(250);
+        let enter = [key(VK_RETURN, false), key(VK_RETURN, true)];
+        SendInput(enter.len() as u32, enter.as_ptr(), size);
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn navigate_browser_to_extensions(_executable: PathBuf, _existing: Vec<isize>, _url: String) {}
+
 #[tauri::command]
 fn open_browser_for_extension() -> Result<BrowserLaunchInfo, String> {
     let (browser, executable, extensions_url) = find_supported_browser().ok_or_else(|| {
         "Chrome, Edge, Brave, Vivaldi, or Opera was not found on this computer".to_string()
     })?;
 
-    let copied = set_clipboard_text_win(&extensions_url);
+    let existing = browser_window_handles(&executable);
+
+    // Chromium blocks `chrome://` URLs passed on the command line, so the
+    // helper types the address into the window it just opened.
     std::process::Command::new(&executable)
         .arg("--new-window")
         .spawn()
         .map_err(|error| format!("Failed to open the browser: {error}"))?;
 
+    navigate_browser_to_extensions(executable, existing, extensions_url.clone());
+
     Ok(BrowserLaunchInfo {
         browser,
         extensions_url,
-        copied,
+    })
+}
+
+/// Read-only counterpart of `open_browser_for_extension`, used to label the
+/// button with the detected default browser before the user clicks it.
+#[tauri::command]
+fn detect_browser_for_extension() -> Option<BrowserLaunchInfo> {
+    find_supported_browser().map(|(browser, _executable, extensions_url)| BrowserLaunchInfo {
+        browser,
+        extensions_url,
     })
 }
 
@@ -1529,6 +1749,7 @@ fn main() {
             prepare_browser_extension,
             open_extension_folder,
             open_browser_for_extension,
+            detect_browser_for_extension,
             copy_text_to_clipboard,
             add_and_start_download,
             resume_download,

@@ -39,7 +39,6 @@ interface ExtensionSetupInfo {
 interface BrowserLaunchInfo {
   browser: string;
   extensions_url: string;
-  copied: boolean;
 }
 
 type Step = 1 | 2;
@@ -101,6 +100,16 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
         if (!cancelled) {
           setError(reason instanceof Error ? reason.message : String(reason));
         }
+      });
+
+    // Detect the default browser up front so the address and button already
+    // point at the right extensions page before the user clicks.
+    invoke<BrowserLaunchInfo | null>('detect_browser_for_extension')
+      .then((result) => {
+        if (!cancelled && result) setLaunch(result);
+      })
+      .catch(() => {
+        // No supported browser found; the button falls back to "Open browser".
       });
 
     return () => {
@@ -202,7 +211,6 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
     try {
       const result = await invoke<BrowserLaunchInfo>('open_browser_for_extension');
       setLaunch(result);
-      if (result.copied) flashCopied('url');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -376,9 +384,10 @@ export const BrowserSetupModal: React.FC<BrowserSetupModalProps> = ({ isOpen, on
                     1
                   </span>
                   <span>
-                    Paste the address into a new tab with{' '}
-                    <strong className="font-semibold text-[#171717]">Ctrl+V</strong>, then press
-                    Enter.
+                    The button above opens the extensions page in your default browser. If it
+                    does not open, use{' '}
+                    <strong className="font-semibold text-[#171717]">Copy</strong> and paste the
+                    address into a new tab.
                   </span>
                 </li>
                 <li className="flex gap-2">
