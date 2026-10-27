@@ -20,6 +20,8 @@ import { LinkExpiredPromptModal } from './components/LinkExpiredPromptModal';
 import { QueueControlBar } from './components/QueueControlBar';
 import { SchedulerView } from './components/SchedulerView';
 import { SiteGrabberView } from './components/SiteGrabberView';
+import { UpdateBanner } from './components/UpdateBanner';
+import { UpdateInstallDialog } from './components/UpdateInstallDialog';
 import {
   type RheowSettings,
   type SchedulerSettings,
@@ -27,6 +29,7 @@ import {
   DEFAULT_SCHEDULER_SETTINGS,
   withSettingsDefaults,
 } from './types/settings';
+import type { UpdateState, UpdateProgress, UpdaterSettings } from './types/updater';
 import type { DownloadItem, DownloadCategory, DownloadStatus } from './types/download';
 
 function readLocalSettings(): RheowSettings {
@@ -111,9 +114,13 @@ export function App() {
   // App Settings (IDM Connection Count & Engine Preferences)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<
-    'connection' | 'limiter' | 'storage' | 'engine' | 'browser' | 'desktop'
+    'connection' | 'limiter' | 'storage' | 'engine' | 'browser' | 'desktop' | 'updates'
   >('connection');
   const [settings, setSettings] = useState<RheowSettings>(readLocalSettings);
+
+  // Auto-update state is owned by Rust; React only mirrors the latest snapshot.
+  const [updateState, setUpdateState] = useState<UpdateState | null>(null);
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
 
   // Automated Queue Scheduler & Queue Details
   const [schedulerSettings, setSchedulerSettings] = useState<SchedulerSettings>(DEFAULT_SCHEDULER_SETTINGS);
@@ -863,6 +870,32 @@ export function App() {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
+  // Mirror the Rust updater state and throttle-free progress events.
+  useEffect(() => {
+    let disposed = false;
+
+    const unlistenStatus = listen<UpdateState>('rheow-update-status', (event) => {
+      if (!disposed) setUpdateState(event.payload);
+    });
+    const unlistenProgress = listen<UpdateProgress>('rheow-update-progress', (event) => {
+      if (!disposed) {
+        setUpdateState((prev) => (prev ? { ...prev, progress: event.payload } : prev));
+      }
+    });
+
+    invoke<UpdateState>('get_update_state')
+      .then((state) => {
+        if (!disposed) setUpdateState(state);
+      })
+      .catch((error) => console.warn('Failed to read update state:', error));
+
+    return () => {
+      disposed = true;
+      void unlistenStatus.then((unlisten) => unlisten());
+      void unlistenProgress.then((unlisten) => unlisten());
+    };
+  }, []);
+
   const handleDelete = async (id: string, deleteFile: boolean = false) => {
     try {
       await invoke('delete_download', { id, deleteFile });
@@ -1084,6 +1117,73 @@ export function App() {
     }
   };
 
+  const handleCheckUpdate = async () => {
+    try {
+      setUpdateState(await invoke<UpdateState>('check_for_update', { manual: true }));
+    } catch (err) {
+      console.error('Failed to check for updates:', err);
+      setToastMessage('Failed to check for updates');
+    }
+  };
+
+  const handleDownloadUpdate = async () => {
+    try {
+      setUpdateState(await invoke<UpdateState>('download_update'));
+    } catch (err) {
+      console.error('Failed to download update:', err);
+      setToastMessage('Failed to download the update');
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    try {
+      const next = await invoke<UpdateState>('install_update', { pauseAll: false });
+      setUpdateState(next);
+      if (next.phase === 'needsPause') {
+        setIsUpdateDialogOpen(true);
+      }
+    } catch (err) {
+      console.error('Failed to install update:', err);
+      setToastMessage('Failed to start the installer');
+    }
+  };
+
+  const handleConfirmUpdateInstall = async () => {
+    setIsUpdateDialogOpen(false);
+    try {
+      setUpdateState(await invoke<UpdateState>('install_update', { pauseAll: true }));
+    } catch (err) {
+      console.error('Failed to install update:', err);
+      setToastMessage('Failed to start the installer');
+    }
+  };
+
+  const handleDismissUpdate = async () => {
+    const version = updateState?.info?.version;
+    if (!version) return;
+
+    setUpdateState((prev) => (prev ? { ...prev, dismissed: true } : prev));
+    try {
+      await invoke('dismiss_update', { version });
+    } catch (err) {
+      console.error('Failed to dismiss update banner:', err);
+      setUpdateState((prev) => (prev ? { ...prev, dismissed: false } : prev));
+    }
+  };
+
+  const handleSaveUpdaterSettings = async (next: UpdaterSettings) => {
+    try {
+      const saved = await invoke<UpdaterSettings>('save_updater_settings', { settings: next });
+      setUpdateState((prev) => (prev ? { ...prev, settings: saved } : prev));
+      setToastMessage(
+        saved.autoCheck ? 'Automatic update checks enabled' : 'Automatic update checks disabled'
+      );
+    } catch (err) {
+      console.error('Failed to save update settings:', err);
+      setToastMessage('Failed to save update settings');
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-[#171717] font-sans antialiased">
       {/* Top Navigation Bar */}
@@ -1142,6 +1242,16 @@ export function App() {
             <SiteGrabberView />
           ) : (
             <>
+              {/* Update banner: only the dashboard and queue views, never a modal. */}
+              {updateState && updateState.info && !updateState.dismissed && (
+                <UpdateBanner
+                  state={updateState}
+                  onDownload={handleDownloadUpdate}
+                  onInstall={handleInstallUpdate}
+                  onDismiss={handleDismissUpdate}
+                />
+              )}
+
               {/* Queues Control Bar for Queues tab */}
               {activeTab === 'queues' && (
                 <QueueControlBar
@@ -1346,6 +1456,11 @@ export function App() {
           setIsSettingsOpen(false);
           setIsBrowserSetupOpen(true);
         }}
+        updateState={updateState}
+        onCheckUpdate={handleCheckUpdate}
+        onDownloadUpdate={handleDownloadUpdate}
+        onInstallUpdate={handleInstallUpdate}
+        onSaveUpdaterSettings={handleSaveUpdaterSettings}
         onSave={async (newSettings) => {
           try {
             await invoke('save_settings', { settings: newSettings });
@@ -1361,6 +1476,14 @@ export function App() {
               : 'Settings saved (Hero Active mode)'
           );
         }}
+      />
+
+      {/* Shown when the user installs while downloads are still active. */}
+      <UpdateInstallDialog
+        isOpen={isUpdateDialogOpen}
+        state={updateState}
+        onClose={() => setIsUpdateDialogOpen(false)}
+        onConfirm={handleConfirmUpdateInstall}
       />
 
       {/* First-run browser extension onboarding */}

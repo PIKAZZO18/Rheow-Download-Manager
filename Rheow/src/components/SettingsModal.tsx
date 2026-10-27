@@ -30,6 +30,8 @@ import {
   CONNECTION_COUNT_OPTIONS,
   withSettingsDefaults,
 } from '../types/settings';
+import type { UpdateState, UpdaterSettings } from '../types/updater';
+import { UpdatesTab } from './UpdatesTab';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -38,9 +40,21 @@ interface SettingsModalProps {
   onSave: (newSettings: RheowSettings) => void | Promise<void>;
   initialTab?: SettingsTab;
   onOpenBrowserSetup?: () => void;
+  updateState: UpdateState | null;
+  onCheckUpdate: () => void;
+  onDownloadUpdate: () => void;
+  onInstallUpdate: () => void;
+  onSaveUpdaterSettings: (settings: UpdaterSettings) => Promise<void>;
 }
 
-type SettingsTab = 'connection' | 'limiter' | 'storage' | 'engine' | 'browser' | 'desktop';
+type SettingsTab =
+  | 'connection'
+  | 'limiter'
+  | 'storage'
+  | 'engine'
+  | 'browser'
+  | 'desktop'
+  | 'updates';
 
 interface BridgeLastRequest {
   method: string;
@@ -125,6 +139,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSave,
   initialTab,
   onOpenBrowserSetup,
+  updateState,
+  onCheckUpdate,
+  onDownloadUpdate,
+  onInstallUpdate,
+  onSaveUpdaterSettings,
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || 'connection');
   const [localSettings, setLocalSettings] = useState<RheowSettings>(settings);
@@ -331,11 +350,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Navigation Tabs (macOS style segmented switch - instant zero-flicker response) */}
-        <div className="px-4.5 py-1.5 border-b border-[#f0f0f0] bg-[#fafafa]/60 flex items-center gap-1 shrink-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="px-4.5 py-1.5 border-b border-[#f0f0f0] bg-[#fafafa]/60 flex flex-wrap items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab('connection')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'connection'
                 ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
                 : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
@@ -348,7 +367,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('limiter')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'limiter'
                 ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
                 : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
@@ -361,20 +380,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('storage')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'storage'
                 ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
                 : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
             }`}
           >
             <FolderOpen className="w-3.5 h-3.5 stroke-[2] text-[#ea580c]" />
-            <span>Save Locations</span>
+            <span>Storage</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('engine')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'engine'
                 ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
                 : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
@@ -387,7 +406,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('browser')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'browser'
                 ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
                 : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
@@ -400,7 +419,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('desktop')}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'desktop'
                 ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
                 : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
@@ -408,6 +427,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             <Monitor className="w-3.5 h-3.5 stroke-[2] text-[#0891b2]" />
             <span>Desktop</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('updates')}
+            className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+              activeTab === 'updates'
+                ? 'bg-white text-[#171717] shadow-xs border border-[#e5e5e5] font-semibold'
+                : 'text-[#525252] hover:text-[#171717] hover:bg-[#f0f0f0] border border-transparent'
+            }`}
+          >
+            <RefreshCw className="w-3.5 h-3.5 stroke-[2] text-[#2563eb]" />
+            <span>Updates</span>
           </button>
         </div>
 
@@ -1181,6 +1213,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Updates saves its own preferences immediately, so it has no Save button. */}
+          <div className={`space-y-3.5 ${activeTab === 'updates' ? 'block' : 'hidden'}`}>
+            <UpdatesTab
+              state={updateState}
+              onCheck={onCheckUpdate}
+              onDownload={onDownloadUpdate}
+              onInstall={onInstallUpdate}
+              onSaveSettings={onSaveUpdaterSettings}
+            />
+          </div>
         </div>
 
         {/* Save feedback stays visible even when the tab body is scrolled */}
@@ -1195,31 +1238,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Modal Bottom Actions */}
         <div className="flex items-center justify-between px-4.5 py-3 border-t border-[#f0f0f0] bg-white shrink-0">
-          <button
-            type="button"
-            onClick={() => setLocalSettings(withSettingsDefaults())}
-            className="text-xs text-[#737373] hover:text-[#171717] hover:underline cursor-pointer"
-          >
-            Reset to Defaults
-          </button>
+          {activeTab === 'updates' ? (
+            <>
+              <span className="text-[11px] text-[#737373]">
+                Update preferences save automatically.
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-8 px-4 rounded-lg bg-[#171717] hover:bg-black text-white text-xs font-medium cursor-pointer shadow-xs"
+              >
+                Done
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setLocalSettings(withSettingsDefaults())}
+                className="text-xs text-[#737373] hover:text-[#171717] hover:underline cursor-pointer"
+              >
+                Reset to Defaults
+              </button>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="h-8 px-3.5 rounded-lg border border-[#e5e5e5] bg-white hover:bg-[#f5f5f5] text-[#171717] text-xs font-medium cursor-pointer shadow-2xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={hasInvalidSubfolder || saving}
-              className="h-8 px-4 rounded-lg bg-[#171717] hover:bg-black text-white text-xs font-medium cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Saving...' : 'Save Settings'}
-            </button>
-          </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="h-8 px-3.5 rounded-lg border border-[#e5e5e5] bg-white hover:bg-[#f5f5f5] text-[#171717] text-xs font-medium cursor-pointer shadow-2xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={hasInvalidSubfolder || saving}
+                  className="h-8 px-4 rounded-lg bg-[#171717] hover:bg-black text-white text-xs font-medium cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {saving ? 'Saving...' : 'Save Settings'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

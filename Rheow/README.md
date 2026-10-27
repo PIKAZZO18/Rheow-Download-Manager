@@ -22,6 +22,7 @@ Rheow focuses on core performance strengths: multi-segment HTTP Range chunking, 
   - Right-click "Download with Rheow" context menu.
   - Automatic download interception with file extension filtering.
   - Communication with the desktop engine via local loopback bridge on `http://127.0.0.1:41789`.
+- **Signed Auto-Updates**: Rheow checks GitHub Releases shortly after startup and every 24 hours. Updates are verified with a Tauri signing key, downloaded only after you click **Download**, and installed only after you confirm. Active downloads are paused with your permission, and the database is backed up before the installer runs.
 
 ---
 
@@ -53,6 +54,7 @@ Rheow/
     │   ├── db/                    # SQLite database layer
     │   ├── engine/                # Multi-segment Range worker & prealloc
     │   ├── server.rs              # HTTP loopback bridge (Port 41789)
+    │   ├── updater.rs             # Signed auto-update state machine
     │   ├── lib.rs                 # Core library
     │   └── main.rs                # Tauri application entrypoint
     └── tests/
@@ -87,10 +89,15 @@ cargo test --test engine_test -- --nocapture
 ```powershell
 cd Rheow
 npm ci
-npx tauri build
+npx tauri build --config src-tauri/tauri.release.conf.json
 ```
 The NSIS installer is created at:
-`Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.0_x64-setup.exe`.
+`Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.1_x64-setup.exe`.
+
+The `tauri.release.conf.json` overlay enables updater artifacts (`.sig` files and
+`latest.json`). It requires `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` in the environment. The public key lives in
+`src-tauri/tauri.conf.json`.
 
 To build only the optimized executable:
 ```powershell
@@ -98,6 +105,30 @@ npx tauri build --no-bundle
 ```
 The standalone binary is created at:
 `Rheow\src-tauri\target\release\rheow.exe`.
+
+---
+
+## 🔄 Updating Rheow
+
+`1.0.1` is the first release with the built-in updater. If you are on `1.0.0`,
+install `Rheow_1.0.1_x64-setup.exe` manually once; later versions can update
+from **Settings → Updates** or the dashboard banner.
+
+New installs use a per-user NSIS installer and do not require administrator
+rights. Existing per-machine installs should be uninstalled once before
+installing `1.0.1`, so the updater can replace files without elevation.
+
+Rheow never installs an update silently. When an update is available you can:
+
+1. Click **Download** and wait for verification to finish.
+2. Click **Install now**. If downloads are active, Rheow offers **Pause All &
+   Install** or **Later**.
+3. Rheow backs up the database to `%APPDATA%\Rheow\backups`, launches the
+   installer, and restarts after it finishes.
+
+Automatic checks can be disabled in **Settings → Updates**. Manual **Check now**
+remains available. Release metadata is read from
+`https://github.com/PIKAZZO18/Rheow-Download-Manager/releases/latest/download/latest.json`.
 
 ---
 

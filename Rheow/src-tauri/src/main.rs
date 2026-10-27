@@ -6,6 +6,7 @@ mod engine;
 mod server;
 mod settings;
 mod system;
+mod updater;
 
 use chrono::{Datelike, Local, Timelike};
 use db::{Database, DownloadRecord};
@@ -1391,6 +1392,7 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
             server::start_http_server(app.handle().clone());
 
@@ -1409,6 +1411,16 @@ fn main() {
             let app_state = app.state::<AppState>();
             let engine = app_state.engine.clone();
             let db = app_state.db.clone();
+
+            // The updater owns its own state so React can stay a thin renderer.
+            // It is managed here, after AppState, because it needs the database
+            // and the engine to pause downloads and back up the database.
+            let updater_state = updater::UpdaterState::new(db.clone(), engine.clone());
+            app.manage(updater_state.clone());
+            let updater_app = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                updater::run_background_loop(updater_state, updater_app).await;
+            });
 
             let engine_for_recover = engine.clone();
             let handle_for_recover = handle.clone();
@@ -1542,7 +1554,14 @@ fn main() {
             open_browser_url,
             update_download_url,
             read_clipboard_text,
-            check_resume_support
+            check_resume_support,
+            updater::get_update_state,
+            updater::check_for_update,
+            updater::download_update,
+            updater::install_update,
+            updater::get_updater_settings,
+            updater::save_updater_settings,
+            updater::dismiss_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rheow application");

@@ -2,13 +2,15 @@ pub mod schema;
 
 use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use crate::settings::{EngineSettings, SchedulerSettings};
+use crate::settings::{EngineSettings, SchedulerSettings, UpdaterSettings};
 
 const ENGINE_SETTINGS_KEY: &str = "engine_settings";
 const SCHEDULER_SETTINGS_KEY: &str = "scheduler_settings";
+const UPDATER_SETTINGS_KEY: &str = "updater_settings";
+const UPDATE_BACKUP_LIMIT: usize = 2;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DownloadRecord {
@@ -75,6 +77,9 @@ pub struct SegmentRecord {
 
 pub struct Database {
     pub conn: Mutex<Connection>,
+    /// Path of the SQLite file. `:memory:` databases have no parent and cannot
+    /// be backed up before an update.
+    path: PathBuf,
 }
 
 fn map_download_row(row: &rusqlite::Row) -> rusqlite::Result<DownloadRecord> {
@@ -120,6 +125,7 @@ impl Database {
 
         let db = Self {
             conn: Mutex::new(conn),
+            path: path.to_path_buf(),
         };
 
         // Older builds seeded fictional rows into real databases. Remove them
@@ -429,6 +435,77 @@ impl Database {
             .sanitized()
     }
 
+    /// Persists the updater preferences as a single JSON blob.
+    pub fn save_updater_settings(&self, settings: &UpdaterSettings) -> Result<()> {
+        let json = serde_json::to_string(settings)
+            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![UPDATER_SETTINGS_KEY, json],
+        )?;
+        Ok(())
+    }
+
+    /// Reads updater preferences, falling back to auto-check enabled.
+    pub fn get_updater_settings(&self) -> UpdaterSettings {
+        let stored: Option<String> = {
+            let conn = self.conn.lock().unwrap();
+            conn.query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![UPDATER_SETTINGS_KEY],
+                |row| row.get(0),
+            )
+            .ok()
+        };
+
+        stored
+            .and_then(|json| serde_json::from_str::<UpdaterSettings>(&json).ok())
+            .unwrap_or_default()
+    }
+
+    /// Creates a consistent SQLite snapshot next to the live database and
+    /// verifies it before returning. The last two snapshots are kept.
+    ///
+    /// The caller must pause active downloads before calling this so no worker
+    /// is writing checkpoints while `VACUUM INTO` runs.
+    pub fn backup_before_update(&self, from_version: &str) -> std::result::Result<PathBuf, String> {
+        let parent = self
+            .path
+            .parent()
+            .ok_or_else(|| "Cannot back up an in-memory database".to_string())?;
+        let backup_dir = parent.join("backups");
+        std::fs::create_dir_all(&backup_dir)
+            .map_err(|e| format!("Failed to create backup directory: {e}"))?;
+
+        let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S-%3f");
+        let backup_path = backup_dir.join(format!("rheow-{from_version}-{stamp}.db"));
+
+        {
+            let conn = self.conn.lock().unwrap();
+            conn.execute(
+                "VACUUM INTO ?1",
+                params![backup_path.to_string_lossy().to_string()],
+            )
+            .map_err(|e| format!("Failed to back up database: {e}"))?;
+        }
+
+        let integrity = Connection::open(&backup_path)
+            .and_then(|conn| {
+                conn.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))
+            })
+            .map_err(|e| format!("Failed to verify database backup: {e}"))?;
+
+        if integrity != "ok" {
+            let _ = std::fs::remove_file(&backup_path);
+            return Err(format!("Database backup failed integrity check: {integrity}"));
+        }
+
+        prune_update_backups(&backup_dir, UPDATE_BACKUP_LIMIT);
+        Ok(backup_path)
+    }
+
     pub fn get_next_queued_downloads(&self, limit: usize) -> Result<Vec<DownloadRecord>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -538,6 +615,40 @@ impl Database {
             }
         }
         Ok(list)
+    }
+}
+
+/// Keeps only the newest `keep` update backups. Deletion failures are ignored:
+/// a stale backup is harmless, while failing the install would not be.
+fn prune_update_backups(dir: &Path, keep: usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+
+    let mut files: Vec<(std::time::SystemTime, PathBuf)> = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            let is_backup = path.extension().and_then(|ext| ext.to_str()) == Some("db")
+                && path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .is_some_and(|name| name.starts_with("rheow-"));
+            if !is_backup {
+                return None;
+            }
+
+            let modified = entry
+                .metadata()
+                .and_then(|meta| meta.modified())
+                .unwrap_or(std::time::UNIX_EPOCH);
+            Some((modified, path))
+        })
+        .collect();
+
+    files.sort_by(|a, b| b.0.cmp(&a.0));
+    for (_, path) in files.into_iter().skip(keep) {
+        let _ = std::fs::remove_file(path);
     }
 }
 
@@ -668,5 +779,77 @@ mod tests {
         db.update_supports_range("dl-range-test", false).unwrap();
         let updated = db.get_download_by_id("dl-range-test").unwrap().unwrap();
         assert!(!updated.supports_range);
+    }
+
+    #[test]
+    fn updater_settings_roundtrip() {
+        let db = Database::new(std::path::Path::new(":memory:")).unwrap();
+
+        // Defaults keep automatic checks enabled.
+        let defaults = db.get_updater_settings();
+        assert!(defaults.auto_check);
+        assert!(defaults.last_check_at.is_none());
+        assert!(defaults.dismissed_version.is_none());
+
+        let settings = UpdaterSettings {
+            auto_check: false,
+            last_check_at: Some("2026-10-27T10:00:00Z".to_string()),
+            dismissed_version: Some("1.0.2".to_string()),
+        };
+        db.save_updater_settings(&settings).unwrap();
+        assert_eq!(db.get_updater_settings(), settings);
+    }
+
+    #[test]
+    fn backup_before_update_creates_verified_snapshot() {
+        let dir = std::env::temp_dir().join(format!(
+            "rheow-backup-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let db = Database::new(&dir.join("rheow.db")).unwrap();
+        db.insert_download(&record("dl-backup", "paused")).unwrap();
+
+        let backup = db.backup_before_update("1.0.0").unwrap();
+        assert!(backup.exists());
+        assert_eq!(backup.parent().unwrap().file_name().unwrap(), "backups");
+
+        let conn = Connection::open(&backup).unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM downloads", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
+        let integrity: String = conn
+            .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(integrity, "ok");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn backup_retention_keeps_newest_two() {
+        let dir = std::env::temp_dir().join(format!(
+            "rheow-backup-prune-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        for (index, seconds) in [(0, 1u64), (1, 2), (2, 3)] {
+            let path = dir.join(format!("rheow-1.0.0-{index}.db"));
+            std::fs::write(&path, b"not a real database").unwrap();
+            let file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+            file.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds))
+                .unwrap();
+        }
+
+        prune_update_backups(&dir, 2);
+
+        assert!(!dir.join("rheow-1.0.0-0.db").exists());
+        assert!(dir.join("rheow-1.0.0-1.db").exists());
+        assert!(dir.join("rheow-1.0.0-2.db").exists());
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

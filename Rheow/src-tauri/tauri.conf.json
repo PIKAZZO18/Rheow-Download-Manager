@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Rheow",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.rheow.app",
   "build": {
     "frontendDist": "../dist",
@@ -50,13 +50,25 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "both",
+        "installMode": "currentUser",
         "languages": ["English"],
         "headerImage": "nsis/header.bmp",
         "sidebarImage": "nsis/sidebar.bmp",
         "installerIcon": "icons/icon.ico",
         "uninstallerIcon": "icons/icon.ico",
         "installerHooks": "nsis/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE2NEJFMTY0NDkxNDBGQzgKUldUSUR4UkpaT0ZMcGtya1IrTFc3aGlKWFZQMDZXTndxYi9XRkJxUUFkS05qNzV3MVA2TldmejUK",
+      "endpoints": [
+        "https://github.com/PIKAZZO18/Rheow-Download-Manager/releases/latest/download/latest.json"
+      ],
+      "requireSignedVersion": true,
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

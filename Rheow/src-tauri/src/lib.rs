@@ -4,6 +4,7 @@ pub mod engine;
 pub mod server;
 pub mod settings;
 pub mod system;
+pub mod updater;
 
 pub use db::{Database, DownloadRecord};
 pub use disk::{get_system_partitions, PartitionInfo};

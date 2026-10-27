@@ -137,6 +137,28 @@ pub fn default_downloads_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("C:\\Downloads"))
 }
 
+/// Auto-update preferences persisted as a single JSON blob. `last_check_at`
+/// records the last attempt (successful or not) so the UI can show "last
+/// checked"; `dismissed_version` hides the dashboard banner for one release
+/// without disabling update checks.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", default)]
+pub struct UpdaterSettings {
+    pub auto_check: bool,
+    pub last_check_at: Option<String>,
+    pub dismissed_version: Option<String>,
+}
+
+impl Default for UpdaterSettings {
+    fn default() -> Self {
+        Self {
+            auto_check: true,
+            last_check_at: None,
+            dismissed_version: None,
+        }
+    }
+}
+
 /// Settings for automated queue scheduling.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]

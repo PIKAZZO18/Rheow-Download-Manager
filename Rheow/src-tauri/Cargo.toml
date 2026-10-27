@@ -1,6 +1,6 @@
 [package]
 name = "rheow"
-version = "1.0.0"
+version = "1.0.1"
 description = "Rheow Modern Download Manager for Windows"
 authors = ["USER"]
 edition = "2021"
@@ -21,6 +21,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-window-state = "2"
+tauri-plugin-updater = "2"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
