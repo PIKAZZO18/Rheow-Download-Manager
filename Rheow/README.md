@@ -118,6 +118,21 @@ New installs use a per-user NSIS installer and do not require administrator
 rights. Existing per-machine installs should be uninstalled once before
 installing `1.0.1`, so the updater can replace files without elevation.
 
+### Windows SmartScreen
+
+The `1.0.1` installer is not Authenticode-signed yet, so Windows may show
+**Windows protected your PC** with **Unknown publisher**. This is separate from
+Tauri's update signature, which verifies update packages inside Rheow. Before
+running the installer, compare its SHA-256 with the value published in the
+release notes:
+
+```powershell
+Get-FileHash .\Rheow_1.0.1_x64-setup.exe -Algorithm SHA256
+```
+
+If the hash matches, choose **More info → Run anyway**. Authenticode signing is
+planned for a future release.
+
 Rheow never installs an update silently. When an update is available you can:
 
 1. Click **Download** and wait for verification to finish.
