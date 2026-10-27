@@ -92,7 +92,7 @@ npm ci
 npx tauri build --config src-tauri/tauri.release.conf.json
 ```
 The NSIS installer is created at:
-`Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.1_x64-setup.exe`.
+`Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.2_x64-setup.exe`.
 
 The `tauri.release.conf.json` overlay enables updater artifacts (`.sig` files and
 `latest.json`). It requires `TAURI_SIGNING_PRIVATE_KEY` and
@@ -110,24 +110,24 @@ The standalone binary is created at:
 
 ## 🔄 Updating Rheow
 
-`1.0.1` is the first release with the built-in updater. If you are on `1.0.0`,
-install `Rheow_1.0.1_x64-setup.exe` manually once; later versions can update
+`1.0.2` is the first stable release with the built-in updater. If you are on `1.0.0`,
+install `Rheow_1.0.2_x64-setup.exe` manually once; later versions can update
 from **Settings → Updates** or the dashboard banner.
 
 New installs use a per-user NSIS installer and do not require administrator
 rights. Existing per-machine installs should be uninstalled once before
-installing `1.0.1`, so the updater can replace files without elevation.
+installing `1.0.2`, so the updater can replace files without elevation.
 
 ### Windows SmartScreen
 
-The `1.0.1` installer is not Authenticode-signed yet, so Windows may show
+The `1.0.2` installer is not Authenticode-signed yet, so Windows may show
 **Windows protected your PC** with **Unknown publisher**. This is separate from
 Tauri's update signature, which verifies update packages inside Rheow. Before
 running the installer, compare its SHA-256 with the value published in the
 release notes:
 
 ```powershell
-Get-FileHash .\Rheow_1.0.1_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\Rheow_1.0.2_x64-setup.exe -Algorithm SHA256
 ```
 
 If the hash matches, choose **More info → Run anyway**. Authenticode signing is

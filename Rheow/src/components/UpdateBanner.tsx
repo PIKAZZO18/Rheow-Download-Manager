@@ -68,7 +68,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
           <p className="text-[11px] text-[#525252] truncate">
             {isReady
               ? 'Rheow will restart after the installer finishes.'
-              : info.notes.trim() || 'A new version is ready to download.'}
+              : 'A new version is ready to download.'}
           </p>
         )}
       </div>
@@ -90,15 +90,6 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
             className="px-3 py-1.5 rounded-lg bg-[#2563eb] text-white text-xs font-semibold hover:bg-[#1d4ed8] cursor-pointer"
           >
             Install now
-          </button>
-        )}
-        {!isDownloading && (
-          <button
-            type="button"
-            onClick={onDismiss}
-            className="px-2.5 py-1.5 rounded-lg text-[#525252] text-xs font-medium hover:bg-white/70 cursor-pointer"
-          >
-            Later
           </button>
         )}
         <button

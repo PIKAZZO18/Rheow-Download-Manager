@@ -71,15 +71,13 @@ export const UpdateInstallDialog: React.FC<UpdateInstallDialogProps> = ({
 
         <div className="px-5 py-4 space-y-3">
           <p className="text-xs text-[#525252] leading-relaxed">
-            {active > 0
-              ? `${countLabel} will be paused so Windows can replace Rheow's files.`
-              : 'Windows will replace Rheow\'s files and restart the app.'}
+            {countLabel} will be paused so Windows can replace Rheow's files.
           </p>
           <div className="flex items-start gap-2.5 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3.5 py-3">
             <Pause className="w-4 h-4 text-[#2563eb] stroke-[2.2] shrink-0 mt-0.5" />
             <p className="text-[11px] text-[#525252] leading-relaxed">
-              Your progress is saved in the database. A backup is created before the installer runs,
-              and paused downloads can be resumed after Rheow restarts.
+              A backup is created before the installer runs, and paused downloads can be resumed
+              after Rheow restarts.
             </p>
           </div>
         </div>
@@ -98,7 +96,7 @@ export const UpdateInstallDialog: React.FC<UpdateInstallDialogProps> = ({
             className="px-3.5 py-2 rounded-lg bg-[#2563eb] text-white text-xs font-semibold hover:bg-[#1d4ed8] cursor-pointer flex items-center gap-1.5"
           >
             <DownloadCloud className="w-3.5 h-3.5 stroke-[2.2]" />
-            {active > 0 ? 'Pause All & Install' : 'Install now'}
+            Pause All &amp; Install
           </button>
         </div>
       </div>

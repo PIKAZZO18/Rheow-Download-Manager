@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.1] - 2026-10-27
+## [1.0.2] - 2026-10-27
 
 ### Added
 
@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New installs use a per-user NSIS installer, so updating no longer requires
   administrator rights. Existing per-machine installs need one manual
   uninstall/reinstall to move to the per-user layout.
+- The **Updates** settings tab and update banner are more compact: repeated
+  status text, the channel badge, and a duplicate dismiss button were removed.
 
 ## [1.0.0] - 2026-10-26
 

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   AlertCircle,
-  CheckCircle2,
   DownloadCloud,
   Loader2,
   RefreshCw,
@@ -50,7 +49,7 @@ const phaseLabel = (state: UpdateState): string => {
     case 'error':
       return 'Update failed';
     default:
-      return 'Automatic update checks are enabled';
+      return '';
   }
 };
 
@@ -79,6 +78,7 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
   const canCheck = !busy && state.phase !== 'ready' && state.phase !== 'needsPause';
   const hasInfo = Boolean(state.info);
   const isReady = state.phase === 'ready' || state.phase === 'needsPause';
+  const phaseText = phaseLabel(state);
 
   const handleToggle = async (checked: boolean) => {
     setSavingToggle(true);
@@ -92,14 +92,9 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
   return (
     <div className="space-y-3.5">
       <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3.5 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold text-[#171717]">Rheow {state.currentVersion}</p>
-            <p className="text-[11px] text-[#737373] mt-0.5">{phaseLabel(state)}</p>
-          </div>
-          <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-white border border-[#e5e5e5] text-[#525252] shrink-0">
-            Stable
-          </span>
+        <div>
+          <p className="text-xs font-semibold text-[#171717]">Rheow {state.currentVersion}</p>
+          {phaseText && <p className="text-[11px] text-[#737373] mt-0.5">{phaseText}</p>}
         </div>
 
         <div className="flex items-center gap-2">
@@ -163,9 +158,7 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
           </div>
           <div>
             <p className="font-medium text-xs text-[#171717]">Check for updates automatically</p>
-            <p className="text-[10px] text-[#737373] mt-0.5">
-              At startup and every 24 hours. Rheow never installs an update without asking.
-            </p>
+            <p className="text-[10px] text-[#737373] mt-0.5">At startup and every 24 hours.</p>
           </div>
         </div>
         <input
@@ -179,22 +172,21 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
 
       {state.phase === 'downloading' && state.progress && (
         <div className="rounded-xl border border-[#e5e5e5] bg-white p-3.5 space-y-2">
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="font-medium text-[#171717]">Downloading update</span>
-            <span className="font-mono text-[#2563eb]">
-              {Math.round(state.progress.percent)}%
-            </span>
-          </div>
           <div className="h-1.5 w-full bg-[#f5f5f5] border border-[#e5e5e5] rounded-full overflow-hidden">
             <div
               className="h-full bg-[#2563eb] rounded-full transition-[width] duration-200"
               style={{ width: `${Math.min(100, Math.max(0, state.progress.percent))}%` }}
             />
           </div>
-          <p className="text-[10px] text-[#737373] font-mono">
-            {formatBytes(state.progress.downloaded)}
-            {state.progress.total ? ` / ${formatBytes(state.progress.total)}` : ''}
-          </p>
+          <div className="flex items-center justify-between text-[10px] font-mono text-[#737373]">
+            <span>
+              {formatBytes(state.progress.downloaded)}
+              {state.progress.total ? ` / ${formatBytes(state.progress.total)}` : ''}
+            </span>
+            <span className="font-semibold text-[#2563eb]">
+              {Math.round(state.progress.percent)}%
+            </span>
+          </div>
         </div>
       )}
 
@@ -223,18 +215,11 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
         </div>
       )}
 
-      {state.phase === 'upToDate' && (
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/60 text-emerald-700 text-[11px]">
-          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-          <span>Rheow {state.currentVersion} is the latest stable version.</span>
-        </div>
-      )}
-
       <div className="flex items-start gap-2.5 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3.5 py-3">
         <ShieldCheck className="w-4 h-4 text-[#16a34a] stroke-[2.2] shrink-0 mt-0.5" />
         <p className="text-[10px] text-[#737373] leading-relaxed">
-          Updates are verified with Rheow's signing key before they run. A database backup is created
-          in <span className="font-mono">%APPDATA%\Rheow\backups</span> before every install.
+          Updates are signed and verified. A database backup is saved to{' '}
+          <span className="font-mono">%APPDATA%\Rheow\backups</span> before each install.
         </p>
       </div>
     </div>
