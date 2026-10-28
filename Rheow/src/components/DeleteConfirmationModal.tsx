@@ -118,24 +118,17 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#f0f0f0] bg-white shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#f0f0f0] bg-white shrink-0">
+          <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
               <Trash2 className="w-4 h-4 stroke-[2.2]" />
             </div>
-            <div>
-              <h2
-                id="delete-dialog-title"
-                className="text-sm font-semibold text-[#171717] tracking-tight"
-              >
-                {isBulk ? `Delete ${targetCount} Downloads` : 'Delete Download'}
-              </h2>
-              <p className="text-[11px] text-[#737373] mt-0.5">
-                {isBulk
-                  ? `Confirm removal of ${targetCount} selected downloads`
-                  : 'Confirm download removal'}
-              </p>
-            </div>
+            <h2
+              id="delete-dialog-title"
+              className="text-sm font-semibold text-[#171717] tracking-tight"
+            >
+              {isBulk ? `Delete ${targetCount} Downloads` : 'Delete Download'}
+            </h2>
           </div>
 
           <button
@@ -150,7 +143,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 flex flex-col gap-4">
+        <div className="p-5 flex flex-col gap-3.5">
           <p className="text-xs text-[#525252] leading-relaxed">
             {isBulk
               ? `Are you sure you want to remove ${targetCount} selected downloads from Rheow?`
@@ -233,55 +226,43 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           ) : null}
 
           {/* Options */}
-          <div className="flex flex-col gap-2.5">
+          <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] divide-y divide-[#e5e5e5] overflow-hidden">
             {/* Option 1: Delete file from directory */}
             <label
-              className={`flex items-start gap-2.5 p-3 rounded-xl border transition-all cursor-pointer ${
-                deleteFile
-                  ? 'border-red-200 bg-red-50/40'
-                  : 'border-[#e5e5e5] bg-[#fafafa] hover:bg-neutral-100/50'
+              className={`flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors cursor-pointer select-none ${
+                deleteFile ? 'bg-red-50/60' : 'hover:bg-neutral-100/50'
               }`}
             >
-              <input
-                type="checkbox"
-                checked={deleteFile}
-                onChange={(e) => setDeleteFile(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded text-red-600 focus:ring-red-600 accent-red-600 cursor-pointer shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <span className="font-semibold text-xs text-[#171717] block">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <input
+                  type="checkbox"
+                  checked={deleteFile}
+                  onChange={(e) => setDeleteFile(e.target.checked)}
+                  className="w-4 h-4 rounded text-red-600 focus:ring-red-600 accent-red-600 cursor-pointer shrink-0"
+                />
+                <span className="text-xs font-medium text-[#171717] truncate">
                   {isBulk ? 'Also delete files from disk' : 'Also delete file from disk'}
                 </span>
-                <span className="text-[11px] text-[#737373] block mt-0.5">
-                  {isBulk
-                    ? 'Permanently removes the downloaded files from your computer.'
-                    : 'Permanently removes the downloaded file from your computer.'}
-                </span>
-                {deleteFile && (
-                  <div className="flex items-center gap-1 text-[11px] text-red-600 font-medium mt-1.5">
-                    <AlertTriangle className="w-3 h-3 stroke-[2.2] shrink-0" />
-                    <span>Files cannot be recovered once deleted from disk.</span>
-                  </div>
-                )}
               </div>
+              {deleteFile && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100/80 border border-red-200/60 shrink-0">
+                  <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
+                  Permanent
+                </span>
+              )}
             </label>
 
             {/* Option 2: Don't show again */}
-            <label className="flex items-start gap-2.5 p-3 rounded-xl border border-[#e5e5e5] bg-[#fafafa] cursor-pointer hover:bg-neutral-100/50 transition-colors">
+            <label className="flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-neutral-100/50 transition-colors cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={dontShowAgain}
                 onChange={(e) => setDontShowAgain(e.target.checked)}
-                className="w-4 h-4 mt-0.5 rounded text-black focus:ring-black accent-[#171717] cursor-pointer shrink-0"
+                className="w-4 h-4 rounded text-black focus:ring-black accent-[#171717] cursor-pointer shrink-0"
               />
-              <div className="flex-1 min-w-0">
-                <span className="font-semibold text-xs text-[#171717] block">
-                  Do not show this confirmation dialog again
-                </span>
-                <span className="text-[11px] text-[#737373] block mt-0.5">
-                  Your choice will be remembered and can be changed in Settings at any time.
-                </span>
-              </div>
+              <span className="text-xs font-medium text-[#525252]">
+                Do not show this confirmation dialog again
+              </span>
             </label>
           </div>
         </div>
