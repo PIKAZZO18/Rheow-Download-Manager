@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Removed redundant "Apply an action to every selected download" helper text from the download table selection bar for a clean, distraction-free toolbar.
 - Made the download table selection toolbar fluidly responsive, ensuring Pause, Resume, Delete, and Clear selection controls remain fully visible without horizontal clipping at 1000×600.
 - Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.
 - Combined the extensions address bar and browser launch button into a single compact toolbar in the setup wizard, and the first step now tells you to click that button instead of copying the address.

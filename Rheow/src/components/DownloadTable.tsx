@@ -244,9 +244,6 @@ export const DownloadTable: React.FC<DownloadTableProps> = ({
               <span className="px-2 py-[2px] rounded-full bg-[#171717] text-white text-[10px] font-semibold tabular-nums leading-none shrink-0">
                 {selectionCount} selected
               </span>
-              <span className="text-[11px] font-normal text-[#737373] truncate">
-                Apply an action to every selected download
-              </span>
             </div>
 
             <div className="flex items-center gap-1.5 shrink-0">
