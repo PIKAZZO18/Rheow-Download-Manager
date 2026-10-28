@@ -5,14 +5,12 @@ import { formatBytes } from '../utils/format';
 
 interface UpdateBannerProps {
   state: UpdateState;
-  onDownload: () => void;
   onInstall: () => void;
   onDismiss: () => void;
 }
 
 export const UpdateBanner: React.FC<UpdateBannerProps> = ({
   state,
-  onDownload,
   onInstall,
   onDismiss,
 }) => {
@@ -21,9 +19,8 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
 
   const isDownloading = phase === 'downloading';
   const isReady = phase === 'ready' || phase === 'needsPause';
-  const isAvailable = phase === 'available';
 
-  if (!isAvailable && !isDownloading && !isReady) return null;
+  if (!isDownloading && !isReady) return null;
 
   return (
     <div
@@ -42,7 +39,7 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-xs font-semibold text-[#171717] truncate">
-            {isReady ? `Rheow ${info.version} is ready to install` : `Rheow ${info.version} is available`}
+            {isReady ? `Rheow ${info.version} is ready to install` : `Downloading Rheow ${info.version}`}
           </p>
           {isDownloading && (
             <span className="text-[11px] font-mono text-[#2563eb] shrink-0">
@@ -74,15 +71,6 @@ export const UpdateBanner: React.FC<UpdateBannerProps> = ({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {isAvailable && (
-          <button
-            type="button"
-            onClick={onDownload}
-            className="px-3 py-1.5 rounded-lg bg-[#2563eb] text-white text-xs font-semibold hover:bg-[#1d4ed8] cursor-pointer"
-          >
-            Download
-          </button>
-        )}
         {isReady && (
           <button
             type="button"

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Updates now appear in a notification in the bottom-right corner with the new version and its release notes. Clicking it opens **Settings → Updates**.
+- After Rheow restarts on a new version, a one-time **What's new** window shows that version's changelog.
+
 ### Changed
 
 - Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.

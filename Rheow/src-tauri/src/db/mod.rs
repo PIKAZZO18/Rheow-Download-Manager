@@ -790,11 +790,15 @@ mod tests {
         assert!(defaults.auto_check);
         assert!(defaults.last_check_at.is_none());
         assert!(defaults.dismissed_version.is_none());
+        assert!(defaults.pending_notes_version.is_none());
+        assert!(defaults.pending_notes.is_none());
 
         let settings = UpdaterSettings {
             auto_check: false,
             last_check_at: Some("2026-10-27T10:00:00Z".to_string()),
             dismissed_version: Some("1.0.2".to_string()),
+            pending_notes_version: Some("1.0.2".to_string()),
+            pending_notes: Some("- Added update notes".to_string()),
         };
         db.save_updater_settings(&settings).unwrap();
         assert_eq!(db.get_updater_settings(), settings);

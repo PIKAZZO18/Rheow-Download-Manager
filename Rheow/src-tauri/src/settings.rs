@@ -139,14 +139,20 @@ pub fn default_downloads_dir() -> PathBuf {
 
 /// Auto-update preferences persisted as a single JSON blob. `last_check_at`
 /// records the last attempt (successful or not) so the UI can show "last
-/// checked"; `dismissed_version` hides the dashboard banner for one release
+/// checked"; `dismissed_version` hides the update notice for one release
 /// without disabling update checks.
+///
+/// `pending_notes_version` and `pending_notes` are written right before the
+/// installer runs. After the restart the running version matches the pending
+/// version, so the app can show that release's notes once and then clear them.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", default)]
 pub struct UpdaterSettings {
     pub auto_check: bool,
     pub last_check_at: Option<String>,
     pub dismissed_version: Option<String>,
+    pub pending_notes_version: Option<String>,
+    pub pending_notes: Option<String>,
 }
 
 impl Default for UpdaterSettings {
@@ -155,6 +161,8 @@ impl Default for UpdaterSettings {
             auto_check: true,
             last_check_at: None,
             dismissed_version: None,
+            pending_notes_version: None,
+            pending_notes: None,
         }
     }
 }
@@ -327,6 +335,40 @@ mod tests {
 
         assert_eq!(invalid.speed_limiter_mode, "per_download");
         assert_eq!(invalid.global_speed_limit_kb, None);
+    }
+
+    #[test]
+    fn updater_settings_roundtrip_and_old_json_still_loads() {
+        let settings = UpdaterSettings {
+            auto_check: false,
+            last_check_at: Some("2026-10-28T09:00:00Z".to_string()),
+            dismissed_version: Some("1.0.1".to_string()),
+            pending_notes_version: Some("1.0.2".to_string()),
+            pending_notes: Some("- Added update notes".to_string()),
+        };
+
+        let json = serde_json::to_value(&settings).expect("updater settings should serialize");
+        assert_eq!(json.get("autoCheck"), Some(&serde_json::json!(false)));
+        assert_eq!(
+            json.get("pendingNotesVersion"),
+            Some(&serde_json::json!("1.0.2"))
+        );
+        assert_eq!(
+            json.get("pendingNotes"),
+            Some(&serde_json::json!("- Added update notes"))
+        );
+
+        let parsed: UpdaterSettings =
+            serde_json::from_value(json).expect("updater settings should deserialize");
+        assert_eq!(parsed, settings);
+
+        // Settings written by an older build have no pending-notes fields.
+        let legacy: UpdaterSettings =
+            serde_json::from_str(r#"{"autoCheck":true,"lastCheckAt":null,"dismissedVersion":null}"#)
+                .expect("legacy updater settings should deserialize");
+        assert!(legacy.auto_check);
+        assert!(legacy.pending_notes_version.is_none());
+        assert!(legacy.pending_notes.is_none());
     }
 
     #[test]

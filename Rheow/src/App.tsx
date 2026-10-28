@@ -22,6 +22,8 @@ import { SchedulerView } from './components/SchedulerView';
 import { SiteGrabberView } from './components/SiteGrabberView';
 import { UpdateBanner } from './components/UpdateBanner';
 import { UpdateInstallDialog } from './components/UpdateInstallDialog';
+import { UpdateNotice } from './components/UpdateNotice';
+import { UpdateNotesDialog } from './components/UpdateNotesDialog';
 import {
   type RheowSettings,
   type SchedulerSettings,
@@ -121,6 +123,7 @@ export function App() {
   // Auto-update state is owned by Rust; React only mirrors the latest snapshot.
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [areNotesAcknowledged, setAreNotesAcknowledged] = useState(false);
 
   // Automated Queue Scheduler & Queue Details
   const [schedulerSettings, setSchedulerSettings] = useState<SchedulerSettings>(DEFAULT_SCHEDULER_SETTINGS);
@@ -1171,6 +1174,24 @@ export function App() {
     }
   };
 
+  // Notes are saved before the installer runs. They belong to the version that
+  // is running now, so they are shown once and cleared when the user closes them.
+  const pendingNotesVersion =
+    updateState?.settings.pendingNotesVersion === updateState?.currentVersion
+      ? updateState?.settings.pendingNotesVersion
+      : null;
+  const pendingNotes =
+    pendingNotesVersion && !areNotesAcknowledged
+      ? updateState?.settings.pendingNotes?.trim() ?? ''
+      : '';
+
+  const handleCloseUpdateNotes = () => {
+    setAreNotesAcknowledged(true);
+    invoke('acknowledge_update_notes').catch((err) =>
+      console.error('Failed to clear update notes:', err)
+    );
+  };
+
   const handleSaveUpdaterSettings = async (next: UpdaterSettings) => {
     try {
       const saved = await invoke<UpdaterSettings>('save_updater_settings', { settings: next });
@@ -1246,7 +1267,6 @@ export function App() {
               {updateState && updateState.info && !updateState.dismissed && (
                 <UpdateBanner
                   state={updateState}
-                  onDownload={handleDownloadUpdate}
                   onInstall={handleInstallUpdate}
                   onDismiss={handleDismissUpdate}
                 />
@@ -1484,6 +1504,31 @@ export function App() {
         state={updateState}
         onClose={() => setIsUpdateDialogOpen(false)}
         onConfirm={handleConfirmUpdateInstall}
+      />
+
+      {/* Bottom-right notice for an available release, with its notes. */}
+      {updateState?.phase === 'available' &&
+        updateState.info &&
+        !updateState.dismissed &&
+        !isSettingsOpen &&
+        !isUpdateDialogOpen &&
+        !pendingNotes && (
+          <UpdateNotice
+            state={updateState}
+            onOpen={() => {
+              setSettingsInitialTab('updates');
+              setIsSettingsOpen(true);
+            }}
+            onDismiss={handleDismissUpdate}
+          />
+        )}
+
+      {/* One-time changelog after Rheow restarts on the new version. */}
+      <UpdateNotesDialog
+        isOpen={Boolean(pendingNotes)}
+        version={updateState?.currentVersion ?? ''}
+        notes={pendingNotes}
+        onClose={handleCloseUpdateNotes}
       />
 
       {/* First-run browser extension onboarding */}

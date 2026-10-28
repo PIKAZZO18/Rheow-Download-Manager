@@ -25,6 +25,8 @@ export interface UpdaterSettings {
   autoCheck: boolean;
   lastCheckAt?: string | null;
   dismissedVersion?: string | null;
+  pendingNotesVersion?: string | null;
+  pendingNotes?: string | null;
 }
 
 export interface UpdateState {

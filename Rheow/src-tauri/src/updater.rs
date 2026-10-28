@@ -329,7 +329,7 @@ impl UpdaterState {
                 .await;
         }
 
-        let (update, bytes) = {
+        let (update, bytes, notes) = {
             let mut inner = self.inner.lock().await;
             if !matches!(inner.phase, UpdatePhase::Ready | UpdatePhase::NeedsPause) {
                 drop(inner);
@@ -361,9 +361,14 @@ impl UpdaterState {
                 return self.snapshot(app).await;
             }
 
+            let notes = inner
+                .info
+                .as_ref()
+                .map(|info| info.notes.clone())
+                .unwrap_or_default();
             inner.phase = UpdatePhase::Installing;
             inner.error = None;
-            (update, bytes)
+            (update, bytes, notes)
         };
         self.emit(app).await;
 
@@ -414,7 +419,26 @@ impl UpdaterState {
                 .await;
         }
 
+        // Save the notes before the installer exits the process. The next launch
+        // sees its running version in `pending_notes_version` and shows them once.
+        if !notes.trim().is_empty() {
+            let mut pending = self.db.get_updater_settings();
+            pending.pending_notes_version = Some(update.version.clone());
+            pending.pending_notes = Some(notes);
+            if let Err(error) = self.db.save_updater_settings(&pending) {
+                return self
+                    .fail_and_resume(
+                        app,
+                        format!("Update cancelled: {error}"),
+                        &paused_ids,
+                        queue_was_running,
+                    )
+                    .await;
+            }
+        }
+
         if let Err(error) = update.install(&bytes) {
+            self.clear_pending_notes();
             return self
                 .fail_and_resume(
                     app,
@@ -440,6 +464,8 @@ impl UpdaterState {
             auto_check: settings.auto_check,
             last_check_at: current.last_check_at,
             dismissed_version: settings.dismissed_version,
+            pending_notes_version: current.pending_notes_version,
+            pending_notes: current.pending_notes,
         };
         self.db
             .save_updater_settings(&sanitized)
@@ -465,6 +491,33 @@ impl UpdaterState {
             .map_err(|error| error.to_string())?;
         self.emit(app).await;
         Ok(())
+    }
+
+    /// Clears the notes saved before an install. Called once the user closes the
+    /// post-update changelog so it never appears twice.
+    pub async fn acknowledge_notes(&self, app: &AppHandle) -> Result<(), String> {
+        let mut settings = self.db.get_updater_settings();
+        if settings.pending_notes.is_none() && settings.pending_notes_version.is_none() {
+            return Ok(());
+        }
+
+        settings.pending_notes = None;
+        settings.pending_notes_version = None;
+        self.db
+            .save_updater_settings(&settings)
+            .map_err(|error| error.to_string())?;
+        self.emit(app).await;
+        Ok(())
+    }
+
+    fn clear_pending_notes(&self) {
+        let mut settings = self.db.get_updater_settings();
+        if settings.pending_notes.is_none() && settings.pending_notes_version.is_none() {
+            return;
+        }
+        settings.pending_notes = None;
+        settings.pending_notes_version = None;
+        let _ = self.db.save_updater_settings(&settings);
     }
 
     async fn active_download_ids(&self) -> Vec<String> {
@@ -597,6 +650,14 @@ pub async fn dismiss_update(
     version: String,
 ) -> Result<(), String> {
     state.dismiss(&app, version).await
+}
+
+#[tauri::command]
+pub async fn acknowledge_update_notes(
+    app: AppHandle,
+    state: State<'_, UpdaterState>,
+) -> Result<(), String> {
+    state.acknowledge_notes(&app).await
 }
 
 #[cfg(test)]

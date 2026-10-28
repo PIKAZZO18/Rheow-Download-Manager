@@ -1782,7 +1782,8 @@ fn main() {
             updater::install_update,
             updater::get_updater_settings,
             updater::save_updater_settings,
-            updater::dismiss_update
+            updater::dismiss_update,
+            updater::acknowledge_update_notes
         ])
         .run(tauri::generate_context!())
         .expect("error while running Rheow application");

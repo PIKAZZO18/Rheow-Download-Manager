@@ -157,6 +157,18 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+/* Bottom-right update notice entrance */
+@keyframes updateNoticeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -272,6 +284,10 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 
 .animate-trash-wiggle {
   animation: trashWiggle 0.4s ease-in-out infinite;
+}
+
+.animate-update-notice-in {
+  animation: updateNoticeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /* Rheow Brand Logo Tile - tactile drop-shadow & elevation pop */
