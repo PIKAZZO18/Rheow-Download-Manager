@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Retained the select-all checkbox inside the download table bulk action toolbar so you can still select all or deselect visible downloads after selecting a single item.
 - The **Browser** settings tab no longer reports **Connected** after the extension is removed. The bridge now trusts the extension only while its once-a-minute heartbeat is recent, and the tab refreshes the status on its own while open.
 - The sidebar drive cards now use each volume's real label (for example **OS (C:)** and **New Volume (D:)**) and list every local or removable drive, instead of a fixed two-drive placeholder.
 - Hardened the local HTTP bridge against cross-extension abuse by requiring a per-installation authentication token (`X-Rheow-Token`) shared with the unpacked extension via `auth.json`.

@@ -234,7 +234,13 @@ export const DownloadTable: React.FC<DownloadTableProps> = ({
           /* Bulk action bar replaces the column labels while a selection exists,
              and uses a fluid flex layout so buttons never clip on narrow viewports. */
           <div className="h-9 px-4 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <SelectionCheckbox
+                checked={allVisibleSelected && sortedItems.length > 0}
+                indeterminate={!allVisibleSelected && someVisibleSelected}
+                onClick={() => onToggleSelectAll?.()}
+                label="Select all visible downloads"
+              />
               <span className="px-2 py-[2px] rounded-full bg-[#171717] text-white text-[10px] font-semibold tabular-nums leading-none shrink-0">
                 {selectionCount} selected
               </span>
