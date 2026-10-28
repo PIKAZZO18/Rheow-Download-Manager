@@ -33,8 +33,17 @@ $bodyFile = Join-Path $env:TEMP ("rheow-bridge-body-{0}.json" -f ([guid]::NewGui
 $payload = '{"url":"https://example.com/rheow-bridge-test.zip","filename":null,"cookie":null,"referer":null}'
 Set-Content -LiteralPath $bodyFile -Value $payload -NoNewline -Encoding Ascii
 
+$token = ''
+$authFile = Join-Path $env:LOCALAPPDATA "com.rheow.app\browser-extension\auth.json"
+if (Test-Path $authFile) {
+    try {
+        $token = (Get-Content $authFile -Raw | ConvertFrom-Json).token
+    } catch {}
+}
+$tokenArgs = if ($token) { @('-H', "X-Rheow-Token: $token") } else { @() }
+
 try {
-    $online = Get-StatusCode -Arguments @('-H', 'X-Rheow-Client: rheow-extension', $healthUrl)
+    $online = Get-StatusCode -Arguments (@('-H', 'X-Rheow-Client: rheow-extension') + $tokenArgs + @($healthUrl))
     if ($online -eq '000') {
         Write-Host "Rheow tidak berjalan di $BaseUrl." -ForegroundColor Red
         Write-Host "Jalankan dulu: cd Rheow; npm run tauri dev" -ForegroundColor Yellow
@@ -48,14 +57,24 @@ try {
             Arguments = @($healthUrl)
         }
         [pscustomobject]@{
-            Name     = 'Health dengan header klien'
-            Expected = '200'
+            Name     = 'Health tanpa token otentikasi'
+            Expected = if ($token) { '403' } else { '200' }
             Arguments = @('-H', 'X-Rheow-Client: rheow-extension', $healthUrl)
+        }
+        [pscustomobject]@{
+            Name     = 'Health dengan token palsu'
+            Expected = if ($token) { '403' } else { '200' }
+            Arguments = @('-H', 'X-Rheow-Client: rheow-extension', '-H', 'X-Rheow-Token: invalid-secret-token', $healthUrl)
+        }
+        [pscustomobject]@{
+            Name     = 'Health dengan header klien dan token valid'
+            Expected = '200'
+            Arguments = @('-H', 'X-Rheow-Client: rheow-extension') + $tokenArgs + @($healthUrl)
         }
         [pscustomobject]@{
             Name     = 'Host palsu (DNS rebinding)'
             Expected = '403'
-            Arguments = @('-H', 'Host: evil.example', '-H', 'X-Rheow-Client: rheow-extension', $healthUrl)
+            Arguments = @('-H', 'Host: evil.example', '-H', 'X-Rheow-Client: rheow-extension') + $tokenArgs + @($healthUrl)
         }
         [pscustomobject]@{
             Name     = 'POST dari origin web'
@@ -65,27 +84,35 @@ try {
                 '-H', 'Content-Type: application/json',
                 '--data-binary', "@$bodyFile",
                 $addUrl
+            ) + $tokenArgs
+        }
+        [pscustomobject]@{
+            Name     = 'POST tanpa token otentikasi dari ekstensi lain'
+            Expected = if ($token) { '403' } else { '200' }
+            Arguments = @(
+                '-H', 'Origin: chrome-extension://unauthorized-extension-id',
+                '-H', 'Content-Type: application/json',
+                '--data-binary', "@$bodyFile",
+                $addUrl
             )
         }
         [pscustomobject]@{
-            Name     = 'POST dari origin ekstensi'
+            Name     = 'POST dari origin ekstensi dengan token valid'
             Expected = '200'
             Arguments = @(
                 '-H', 'Origin: chrome-extension://abcdefghijklmnop',
                 '-H', 'Content-Type: application/json',
-                '--data-binary', "@$bodyFile",
-                $addUrl
-            )
+                '--data-binary', "@$bodyFile"
+            ) + $tokenArgs + @($addUrl)
         }
         [pscustomobject]@{
-            Name     = 'POST dengan header klien'
+            Name     = 'POST dengan header klien dan token valid'
             Expected = '200'
             Arguments = @(
                 '-H', 'X-Rheow-Client: rheow-extension',
                 '-H', 'Content-Type: application/json',
-                '--data-binary', "@$bodyFile",
-                $addUrl
-            )
+                '--data-binary', "@$bodyFile"
+            ) + $tokenArgs + @($addUrl)
         }
         [pscustomobject]@{
             Name     = 'Preflight origin web'
@@ -113,9 +140,8 @@ try {
             Arguments = @(
                 '-H', 'Origin: chrome-extension://abcdefghijklmnop',
                 '-H', 'Content-Type: text/plain',
-                '--data-binary', "@$bodyFile",
-                $addUrl
-            )
+                '--data-binary', "@$bodyFile"
+            ) + $tokenArgs + @($addUrl)
         }
     )
 

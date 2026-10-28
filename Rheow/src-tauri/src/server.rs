@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Mutex;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -13,6 +14,14 @@ use tokio::net::TcpListener;
 /// comes from an extension origin.
 const CLIENT_HEADER: &str = "x-rheow-client";
 const CLIENT_ID: &str = "rheow-extension";
+
+/// Secret token shared between the desktop bridge and the bundled extension.
+/// Generated once, written to `<local_data>/browser-extension/auth.json`, and
+/// required on every bridge request as `X-Rheow-Token`.
+const TOKEN_HEADER: &str = "x-rheow-token";
+const TOKEN_HEADER_ALIAS: &str = "x-rheow-auth";
+const AUTH_FILE: &str = "auth.json";
+static BRIDGE_TOKEN: OnceLock<String> = OnceLock::new();
 
 const BRIDGE_HOST: &str = "127.0.0.1";
 const BRIDGE_PORT: u16 = 41789;
@@ -108,6 +117,61 @@ struct RequestHead {
     host: Option<String>,
     client: Option<String>,
     content_type: Option<String>,
+    token: Option<String>,
+}
+
+fn bridge_token() -> Option<String> {
+    BRIDGE_TOKEN.get().cloned()
+}
+
+fn bridge_token_path(app: &AppHandle) -> Option<PathBuf> {
+    app.path()
+        .app_local_data_dir()
+        .ok()
+        .map(|dir| dir.join("browser-extension").join(AUTH_FILE))
+}
+
+fn persist_token_file(path: &std::path::Path, token: &str) {
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let body = serde_json::json!({ "token": token });
+    if let Ok(text) = serde_json::to_string_pretty(&body) {
+        let _ = std::fs::write(path, text);
+    }
+}
+
+/// Ensures a bridge token exists on disk and caches it. Called once during
+/// app setup before the HTTP listener starts.
+pub fn init_bridge_token(app: &AppHandle) {
+    let Some(path) = bridge_token_path(app) else {
+        return;
+    };
+
+    if let Some(existing) = BRIDGE_TOKEN.get() {
+        if !path.exists() {
+            persist_token_file(&path, existing);
+        }
+        return;
+    }
+
+    let token = if let Ok(text) = std::fs::read_to_string(&path) {
+        serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|value| value.get("token").and_then(|t| t.as_str()).map(String::from))
+            .filter(|token| !token.is_empty())
+            .unwrap_or_else(|| {
+                let fresh = uuid::Uuid::new_v4().to_string();
+                persist_token_file(&path, &fresh);
+                fresh
+            })
+    } else {
+        let fresh = uuid::Uuid::new_v4().to_string();
+        persist_token_file(&path, &fresh);
+        fresh
+    };
+
+    let _ = BRIDGE_TOKEN.set(token);
 }
 
 impl RequestHead {
@@ -123,6 +187,7 @@ impl RequestHead {
                     "host" => head.host = Some(value),
                     "x-rheow-client" => head.client = Some(value),
                     "content-type" => head.content_type = Some(value),
+                    "x-rheow-token" | "x-rheow-auth" => head.token = Some(value),
                     _ => {}
                 }
             }
@@ -146,7 +211,7 @@ fn is_trusted_origin(origin: &str) -> bool {
 /// Returns `None` when the request must be rejected. `Some(None)` means the
 /// request carried no `Origin` header, so no CORS header is needed in the
 /// response. `Some(Some(origin))` is the origin to echo back.
-fn authorize(head: &RequestHead) -> Option<Option<String>> {
+fn authorize(head: &RequestHead, method: &str) -> Option<Option<String>> {
     let host_ok = head
         .host
         .as_deref()
@@ -159,6 +224,16 @@ fn authorize(head: &RequestHead) -> Option<Option<String>> {
 
     if !host_ok {
         return None;
+    }
+
+    // CORS preflight (OPTIONS) cannot carry custom request headers. It only
+    // verifies that the host and origin are allowed.
+    if method != "OPTIONS" {
+        if let Some(expected) = bridge_token() {
+            if head.token.as_deref() != Some(expected.as_str()) {
+                return None;
+            }
+        }
     }
 
     match head.origin.as_deref() {
@@ -217,12 +292,14 @@ fn preflight_response(origin: &Option<String>) -> String {
     format!(
         "HTTP/1.1 204 No Content\r\n\
 {}Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n\
-Access-Control-Allow-Headers: Content-Type, {}\r\n\
+Access-Control-Allow-Headers: Content-Type, {}, {}, {}\r\n\
 Access-Control-Max-Age: 600\r\n\
 Content-Length: 0\r\n\
 Connection: close\r\n\r\n",
         cors_headers(origin),
-        CLIENT_HEADER
+        CLIENT_HEADER,
+        TOKEN_HEADER,
+        TOKEN_HEADER_ALIAS
     )
 }
 
@@ -322,7 +399,7 @@ pub fn start_http_server(app_handle: AppHandle) {
                 // Every endpoint, including the health check, is gated. This
                 // stops random websites from probing for a local Rheow install
                 // or injecting downloads.
-                let allowed_origin = match authorize(&head) {
+                let allowed_origin = match authorize(&head, method) {
                     Some(origin) => origin,
                     None => {
                         eprintln!(
@@ -493,6 +570,22 @@ mod tests {
             host: Some(host.to_string()),
             client: client.map(|s| s.to_string()),
             content_type: None,
+            token: super::bridge_token(),
+        }
+    }
+
+    fn head_with_token(
+        origin: Option<&str>,
+        host: &str,
+        client: Option<&str>,
+        token: Option<&str>,
+    ) -> RequestHead {
+        RequestHead {
+            origin: origin.map(|s| s.to_string()),
+            host: Some(host.to_string()),
+            client: client.map(|s| s.to_string()),
+            content_type: None,
+            token: token.map(|s| s.to_string()),
         }
     }
 
@@ -500,7 +593,7 @@ mod tests {
     fn accepts_extension_origin() {
         let request = head(Some("chrome-extension://abcdef"), "127.0.0.1:41789", None);
         assert_eq!(
-            authorize(&request),
+            authorize(&request, "GET"),
             Some(Some("chrome-extension://abcdef".to_string()))
         );
     }
@@ -508,37 +601,37 @@ mod tests {
     #[test]
     fn rejects_web_origin() {
         let request = head(Some("https://evil.example"), "127.0.0.1:41789", None);
-        assert!(authorize(&request).is_none());
+        assert!(authorize(&request, "GET").is_none());
     }
 
     #[test]
     fn rejects_null_origin() {
         let request = head(Some("null"), "127.0.0.1:41789", None);
-        assert!(authorize(&request).is_none());
+        assert!(authorize(&request, "GET").is_none());
     }
 
     #[test]
     fn accepts_identified_non_browser_client() {
         let request = head(None, "127.0.0.1:41789", Some("rheow-extension"));
-        assert_eq!(authorize(&request), Some(None));
+        assert_eq!(authorize(&request, "GET"), Some(None));
     }
 
     #[test]
     fn rejects_unidentified_non_browser_client() {
         let request = head(None, "127.0.0.1:41789", None);
-        assert!(authorize(&request).is_none());
+        assert!(authorize(&request, "GET").is_none());
     }
 
     #[test]
     fn rejects_dns_rebinding_host() {
         let request = head(Some("chrome-extension://abcdef"), "evil.example", None);
-        assert!(authorize(&request).is_none());
+        assert!(authorize(&request, "GET").is_none());
     }
 
     #[test]
     fn accepts_localhost_alias() {
         let request = head(None, "localhost:41789", Some("rheow-extension"));
-        assert_eq!(authorize(&request), Some(None));
+        assert_eq!(authorize(&request, "GET"), Some(None));
     }
 
     #[test]
@@ -586,5 +679,30 @@ mod tests {
         let payload_no_referer: super::BrowserBatchAddPayload = serde_json::from_str(json_no_referer).unwrap();
         assert_eq!(payload_no_referer.urls.len(), 1);
         assert_eq!(payload_no_referer.referer, None);
+    }
+
+    #[test]
+    fn authorize_rejects_missing_token_when_configured() {
+        let token = "test-token-123";
+        let _ = super::BRIDGE_TOKEN.set(token.to_string());
+        // Without token header it must be rejected even with valid client header.
+        let without = head_with_token(None, "127.0.0.1:41789", Some("rheow-extension"), None);
+        assert!(authorize(&without, "GET").is_none());
+        // With correct token it passes.
+        let with = head_with_token(None, "127.0.0.1:41789", Some("rheow-extension"), Some(token));
+        assert_eq!(authorize(&with, "GET"), Some(None));
+        // Wrong token rejected.
+        let wrong = head_with_token(None, "127.0.0.1:41789", Some("rheow-extension"), Some("wrong"));
+        assert!(authorize(&wrong, "GET").is_none());
+    }
+
+    #[test]
+    fn options_preflight_does_not_require_token() {
+        let _ = super::BRIDGE_TOKEN.set("test-token-123".to_string());
+        let request = head_with_token(Some("chrome-extension://abcdef"), "127.0.0.1:41789", None, None);
+        assert_eq!(
+            authorize(&request, "OPTIONS"),
+            Some(Some("chrome-extension://abcdef".to_string()))
+        );
     }
 }

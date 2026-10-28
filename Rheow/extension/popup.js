@@ -1,6 +1,30 @@
 const RHEOW_HEALTH = 'http://127.0.0.1:41789/api/health';
 const RHEOW_ENDPOINT = 'http://127.0.0.1:41789/api/add_download';
 
+let cachedBridgeToken = null;
+
+async function getBridgeToken() {
+  if (cachedBridgeToken) return cachedBridgeToken;
+  try {
+    const resp = await fetch(chrome.runtime.getURL('auth.json'), { cache: 'no-store' });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data && typeof data.token === 'string' && data.token.length > 0) {
+        cachedBridgeToken = data.token;
+        return cachedBridgeToken;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+async function bridgeHeaders(extra = {}) {
+  const token = await getBridgeToken();
+  const headers = { 'X-Rheow-Client': 'rheow-extension', ...extra };
+  if (token) headers['X-Rheow-Token'] = token;
+  return headers;
+}
+
 const statusPill = document.getElementById('statusPill');
 const statusText = document.getElementById('statusText');
 const interceptToggle = document.getElementById('interceptToggle');
@@ -15,7 +39,7 @@ async function ping(timeoutMs) {
   try {
     const resp = await fetch(RHEOW_HEALTH, {
       signal: controller.signal,
-      headers: { 'X-Rheow-Client': 'rheow-extension' }
+      headers: await bridgeHeaders()
     });
     return resp.ok;
   } catch {
@@ -68,10 +92,9 @@ sendBtn.addEventListener('click', async () => {
   try {
     const resp = await fetch(RHEOW_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Rheow-Client': 'rheow-extension'
-      },
+      headers: await bridgeHeaders({
+        'Content-Type': 'application/json'
+      }),
       body: JSON.stringify({
         url,
         filename: null,

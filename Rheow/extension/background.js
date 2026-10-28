@@ -2,6 +2,36 @@ const RHEOW_ENDPOINT = 'http://127.0.0.1:41789/api/add_download';
 const RHEOW_BATCH_ENDPOINT = 'http://127.0.0.1:41789/api/add_batch';
 const RHEOW_HEALTH = 'http://127.0.0.1:41789/api/health';
 
+let cachedBridgeToken = null;
+let bridgeTokenPromise = null;
+
+async function getBridgeToken() {
+  if (cachedBridgeToken) return cachedBridgeToken;
+  if (bridgeTokenPromise) return bridgeTokenPromise;
+  bridgeTokenPromise = (async () => {
+    try {
+      const resp = await fetch(chrome.runtime.getURL('auth.json'), { cache: 'no-store' });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      if (data && typeof data.token === 'string' && data.token.length > 0) {
+        cachedBridgeToken = data.token;
+        return cachedBridgeToken;
+      }
+    } catch {}
+    return null;
+  })();
+  const token = await bridgeTokenPromise;
+  bridgeTokenPromise = null;
+  return token;
+}
+
+async function bridgeHeaders(extra = {}) {
+  const token = await getBridgeToken();
+  const headers = { 'X-Rheow-Client': 'rheow-extension', ...extra };
+  if (token) headers['X-Rheow-Token'] = token;
+  return headers;
+}
+
 // File extensions typically handled by a download manager
 const INTERCEPT_EXTENSIONS = new Set([
   'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'dmg',
@@ -77,7 +107,7 @@ async function isRheowOnline() {
   try {
     const resp = await fetch(RHEOW_HEALTH, {
       signal: controller.signal,
-      headers: { 'X-Rheow-Client': 'rheow-extension' }
+      headers: await bridgeHeaders()
     });
     return resp.ok;
   } catch {
@@ -96,7 +126,7 @@ async function announcePresence() {
   try {
     await fetch(RHEOW_HEALTH, {
       signal: controller.signal,
-      headers: { 'X-Rheow-Client': 'rheow-extension' }
+      headers: await bridgeHeaders()
     });
   } catch {
     // Rheow may still be starting; the popup and download flow retry later.
@@ -208,10 +238,9 @@ async function sendToRheow(payload) {
   try {
     const resp = await fetch(RHEOW_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Rheow-Client': 'rheow-extension'
-      },
+      headers: await bridgeHeaders({
+        'Content-Type': 'application/json'
+      }),
       body: JSON.stringify(payload),
       signal: controller.signal
     });
@@ -231,10 +260,9 @@ async function sendBatchToRheow(payload) {
   try {
     const resp = await fetch(RHEOW_BATCH_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Rheow-Client': 'rheow-extension'
-      },
+      headers: await bridgeHeaders({
+        'Content-Type': 'application/json'
+      }),
       body: JSON.stringify(payload),
       signal: controller.signal
     });

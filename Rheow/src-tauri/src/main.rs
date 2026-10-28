@@ -391,6 +391,8 @@ fn prepare_extension_copy(app: &AppHandle) -> Result<(PathBuf, bool), String> {
             .map_err(|error| format!("Failed to copy browser extension: {error}"))?;
     }
 
+    server::init_bridge_token(app);
+
     Ok((destination, copied))
 }
 
@@ -1210,17 +1212,22 @@ async fn open_folder(path: String) -> Result<(), String> {
 
 #[tauri::command]
 async fn open_browser_url(url: String) -> Result<(), String> {
+    let trimmed = url.trim();
+    if !trimmed.starts_with("http://") && !trimmed.starts_with("https://") {
+        return Err("Only http and https URLs are allowed".to_string());
+    }
+
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("rundll32")
-            .args(["url.dll,FileProtocolHandler", &url])
+            .args(["url.dll,FileProtocolHandler", trimmed])
             .spawn()
             .map_err(|e| e.to_string())?;
     }
     #[cfg(not(target_os = "windows"))]
     {
         std::process::Command::new("xdg-open")
-            .arg(&url)
+            .arg(trimmed)
             .spawn()
             .map_err(|e| e.to_string())?;
     }
@@ -1301,6 +1308,7 @@ fn get_clipboard_text_win() -> Option<String> {
         fn GetClipboardData(uFormat: u32) -> *mut c_void;
         fn GlobalLock(hMem: *mut c_void) -> *mut c_void;
         fn GlobalUnlock(hMem: *mut c_void) -> i32;
+        fn GlobalSize(hMem: *mut c_void) -> usize;
     }
     const CF_UNICODETEXT: u32 = 13;
 
@@ -1318,8 +1326,9 @@ fn get_clipboard_text_win() -> Option<String> {
             CloseClipboard();
             return None;
         }
+        let max_chars = GlobalSize(handle) / std::mem::size_of::<u16>();
         let mut len = 0;
-        while *ptr.add(len) != 0 {
+        while len < max_chars && *ptr.add(len) != 0 {
             len += 1;
         }
         let slice = std::slice::from_raw_parts(ptr, len);
@@ -1614,6 +1623,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
+            server::init_bridge_token(app.handle());
             server::start_http_server(app.handle().clone());
 
             // Keep the tray handle alive for the whole process lifetime.
@@ -1915,5 +1925,18 @@ mod browser_detection_tests {
     #[test]
     fn missing_prog_id_returns_none() {
         assert_eq!(parse_prog_id("no registry value here"), None);
+    }
+}
+
+#[cfg(test)]
+mod open_browser_url_tests {
+    use super::open_browser_url;
+
+    #[tokio::test]
+    async fn rejects_non_http_urls() {
+        assert!(open_browser_url("calc.exe".to_string()).await.is_err());
+        assert!(open_browser_url("powershell.exe".to_string()).await.is_err());
+        assert!(open_browser_url("file:///C:/Windows/System32/cmd.exe".to_string()).await.is_err());
+        assert!(open_browser_url("javascript:alert(1)".to_string()).await.is_err());
     }
 }

@@ -51,16 +51,21 @@ pub fn resolve_category_destination(
 }
 
 fn resolve_collision(dir: &Path, filename: &str) -> PathBuf {
-    let mut candidate = dir.join(filename);
+    let safe_name = Path::new(filename)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("download.bin");
+    let mut candidate = dir.join(safe_name);
     if !candidate.exists() {
         return candidate;
     }
 
-    let stem = Path::new(filename)
+    let stem = Path::new(safe_name)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("file");
-    let ext = Path::new(filename)
+    let ext = Path::new(safe_name)
         .extension()
         .and_then(|e| e.to_str())
         .map(|e| format!(".{}", e))
@@ -205,5 +210,27 @@ mod tests {
 
         let _ = fs::remove_dir_all(&base);
         let _ = fs::remove_dir_all(&absolute);
+    }
+
+    #[test]
+    fn prevents_path_traversal_in_filename() {
+        let base = unique_dir("traversal");
+        let overrides = HashMap::new();
+
+        let path =
+            resolve_category_destination(&base, "General", "..\\..\\evil.bat", &overrides).unwrap();
+        assert_eq!(path, base.join("General").join("evil.bat"));
+        assert!(path.starts_with(&base.join("General")));
+
+        let path_slash =
+            resolve_category_destination(&base, "General", "../../evil.sh", &overrides).unwrap();
+        assert_eq!(path_slash, base.join("General").join("evil.sh"));
+        assert!(path_slash.starts_with(&base.join("General")));
+
+        let path_empty =
+            resolve_category_destination(&base, "General", "..", &overrides).unwrap();
+        assert_eq!(path_empty, base.join("General").join("download.bin"));
+
+        let _ = fs::remove_dir_all(&base);
     }
 }
