@@ -1004,15 +1004,16 @@ async fn resume_download(
     state.engine.resume_download(&app, &id).await
 }
 
-/// Bulk resume goes through the queue so a large selection cannot open more
-/// parallel connections than the engine allows.
+/// Bulk resume starts every selected download right away, matching the
+/// single-item resume path. It must not route through the queue worker: the
+/// queue is idle unless the user starts it, so items would stay queued.
 #[tauri::command]
 async fn resume_downloads(
     app: AppHandle,
     state: State<'_, AppState>,
     ids: Vec<String>,
 ) -> Result<(), String> {
-    state.engine.queue_downloads(&app, ids).await
+    state.engine.resume_downloads(&app, ids).await
 }
 
 #[tauri::command]

@@ -362,38 +362,23 @@ impl EngineManager {
         Ok(())
     }
 
-    /// Moves the given downloads into the queue and lets the worker start them
-    /// as slots free up. Bulk resume uses this so a large selection cannot open
-    /// more parallel connections than `max_concurrent_downloads` allows.
-    pub async fn queue_downloads(
+    /// Resumes every requested download right away, exactly like clicking
+    /// Resume on a single row. Bulk resume must not go through the queue: the
+    /// queue worker is idle unless the user starts it, so routed items would
+    /// sit in `queued` forever instead of downloading.
+    pub async fn resume_downloads(
         self: &Arc<Self>,
         app: &AppHandle,
         ids: Vec<String>,
     ) -> Result<(), String> {
-        let mut queued = 0usize;
-
         for id in ids {
-            let record = match self.db.get_download_by_id(&id).map_err(|e| e.to_string())? {
-                Some(record) => record,
-                None => continue,
-            };
-
-            if record.status == "completed" {
-                continue;
+            match self.resume_download(app, &id).await {
+                Ok(()) => {}
+                // Completed rows have nothing left to resume, so they are
+                // skipped silently. Anything else is worth surfacing.
+                Err(err) if err == "Download already completed" => {}
+                Err(err) => eprintln!("[Rheow] failed to resume {}: {}", id, err),
             }
-
-            self.db
-                .update_status(&id, "queued")
-                .map_err(|e| e.to_string())?;
-            let _ = app.emit(
-                "download-status-changed",
-                serde_json::json!({ "id": id, "status": "queued" }),
-            );
-            queued += 1;
-        }
-
-        if queued > 0 {
-            self.process_next_queued(app.clone()).await;
         }
 
         Ok(())
@@ -508,13 +493,9 @@ impl EngineManager {
             }),
         );
 
-        let self_clone = self.clone();
-        let app_clone = app.clone();
-        tokio::spawn(async move {
-            self_clone.process_next_queued(app_clone).await;
-        });
-
-        Ok(())
+        // Start the fresh download immediately. Going through the queue would
+        // leave it parked whenever the queue worker is idle.
+        self.resume_download(app, id).await
     }
 
     pub async fn pause_all_downloads(self: &Arc<Self>, app: &AppHandle) -> Result<(), String> {

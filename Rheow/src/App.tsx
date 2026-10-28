@@ -818,15 +818,26 @@ export function App() {
     );
     if (targets.length === 0) return;
 
-    // Queue them instead of starting every item at once: the engine's queue
-    // worker respects the configured connection limit.
+    // Resume starts each selected download right away, matching the single-row
+    // Resume button. The queue worker stays idle unless the user starts it, so
+    // routing these items through the queue would leave them parked forever.
     await invoke('resume_downloads', { ids: targets.map((d) => d.id) }).catch((err) =>
-      console.error('Failed to queue selected downloads:', err)
+      console.error('Failed to resume selected downloads:', err)
     );
     const ids = new Set(targets.map((d) => d.id));
     setDownloads((prev) =>
       prev.map((d) =>
-        ids.has(d.id) ? { ...d, status: 'queued', speedBytesPerSecond: 0, eta: 'Queued' } : d
+        ids.has(d.id)
+          ? {
+              ...d,
+              status: 'downloading',
+              speedBytesPerSecond: 0,
+              eta:
+                d.eta === 'Paused' || d.eta === 'Queued' || d.eta === 'Failed' || d.eta === 'Cancelled'
+                  ? '--:--:--'
+                  : d.eta,
+            }
+          : d
       )
     );
     setSelectedIds(new Set());
@@ -1010,11 +1021,11 @@ export function App() {
           d.id === id
             ? {
                 ...d,
-                status: 'queued',
+                status: 'downloading',
                 downloadedSize: 0,
                 progressPercentage: 0,
                 speedBytesPerSecond: 0,
-                eta: 'Queued',
+                eta: '--:--:--',
               }
             : d
         )
