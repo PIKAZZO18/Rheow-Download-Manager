@@ -58,10 +58,10 @@ const STATUS_ORDER: Record<string, number> = {
 interface BulkActions {
   pause: () => void;
   resume: () => void;
-  cancel: () => void;
+  delete: () => void;
   canPause: boolean;
   canResume: boolean;
-  canCancel: boolean;
+  canDelete: boolean;
 }
 
 interface DownloadTableProps {
@@ -230,66 +230,62 @@ export const DownloadTable: React.FC<DownloadTableProps> = ({
     <div className="bg-white border border-[#e5e5e5] rounded-xl overflow-hidden shadow-[0_4px_7px_rgba(0,0,0,0.04)] select-none flex-1 min-h-[220px] flex flex-col">
       {/* Table Header: Fixed at top with clean rounded-t-xl corners */}
       <div className="w-full shrink-0 bg-[#f5f5f5] border-b border-[#e5e5e5]">
-        <table className="w-full text-left border-collapse table-fixed">
-          <colgroup>
-            <col className="min-w-[180px]" />
-            <col className="w-[96px]" />
-            <col className="w-[146px]" />
-            <col className="w-[88px]" />
-            <col className="w-[80px]" />
-            <col className="w-[106px]" />
-            <col className="w-[134px]" />
-          </colgroup>
-          <thead>
-            {hasSelection ? (
-              /* Bulk action bar replaces the column labels while a selection exists,
-                 so acting on many rows never shifts the table layout. */
-              <tr className="h-9 bg-[#f5f5f5]">
-                <th colSpan={7} className="px-4 py-0">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="px-2 py-[2px] rounded-full bg-[#171717] text-white text-[10px] font-semibold tabular-nums leading-none">
-                        {selectionCount} selected
-                      </span>
-                      <span className="text-[11px] font-normal text-[#737373] truncate">
-                        Apply an action to every selected download
-                      </span>
-                    </div>
+        {hasSelection ? (
+          /* Bulk action bar replaces the column labels while a selection exists,
+             and uses a fluid flex layout so buttons never clip on narrow viewports. */
+          <div className="h-9 px-4 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-[2px] rounded-full bg-[#171717] text-white text-[10px] font-semibold tabular-nums leading-none shrink-0">
+                {selectionCount} selected
+              </span>
+              <span className="text-[11px] font-normal text-[#737373] truncate">
+                Apply an action to every selected download
+              </span>
+            </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <BulkButton
-                        icon={<Pause className="w-3 h-3 stroke-[2.2]" />}
-                        label="Pause"
-                        onClick={bulkActions?.pause}
-                        disabled={!bulkActions?.canPause}
-                      />
-                      <BulkButton
-                        icon={<Play className="w-3 h-3 stroke-[2.2] fill-current" />}
-                        label="Resume"
-                        onClick={bulkActions?.resume}
-                        disabled={!bulkActions?.canResume}
-                      />
-                      <BulkButton
-                        icon={<XCircle className="w-3 h-3 stroke-[2.2]" />}
-                        label="Cancel"
-                        onClick={bulkActions?.cancel}
-                        disabled={!bulkActions?.canCancel}
-                        tone="danger"
-                      />
-                      <button
-                        type="button"
-                        onClick={onClearSelection}
-                        title="Clear selection"
-                        aria-label="Clear selection"
-                        className="ml-1 w-6 h-6 rounded-[6px] flex items-center justify-center text-[#737373] hover:text-[#171717] hover:bg-[#e5e5e5] transition-colors cursor-pointer"
-                      >
-                        <X className="w-3.5 h-3.5 stroke-[2]" />
-                      </button>
-                    </div>
-                  </div>
-                </th>
-              </tr>
-            ) : (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <BulkButton
+                icon={<Pause className="w-3 h-3 stroke-[2.2]" />}
+                label="Pause"
+                onClick={bulkActions?.pause}
+                disabled={!bulkActions?.canPause}
+              />
+              <BulkButton
+                icon={<Play className="w-3 h-3 stroke-[2.2] fill-current" />}
+                label="Resume"
+                onClick={bulkActions?.resume}
+                disabled={!bulkActions?.canResume}
+              />
+              <BulkButton
+                icon={<Trash2 className="w-3 h-3 stroke-[2.2]" />}
+                label="Delete"
+                onClick={bulkActions?.delete}
+                disabled={!bulkActions?.canDelete}
+                tone="danger"
+              />
+              <button
+                type="button"
+                onClick={onClearSelection}
+                title="Clear selection"
+                aria-label="Clear selection"
+                className="ml-1 w-6 h-6 rounded-[6px] flex items-center justify-center text-[#737373] hover:text-[#171717] hover:bg-[#e5e5e5] transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5 stroke-[2]" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse table-fixed">
+            <colgroup>
+              <col className="min-w-[180px]" />
+              <col className="w-[96px]" />
+              <col className="w-[146px]" />
+              <col className="w-[88px]" />
+              <col className="w-[80px]" />
+              <col className="w-[106px]" />
+              <col className="w-[134px]" />
+            </colgroup>
+            <thead>
               <tr className="h-9 bg-[#f5f5f5] text-[11px] font-semibold text-[#737373] tracking-[0.5px]">
                 {/* Col 1: File Name & Origin */}
                 <th
@@ -349,9 +345,9 @@ export const DownloadTable: React.FC<DownloadTableProps> = ({
                   ACTIONS
                 </th>
               </tr>
-            )}
-          </thead>
-        </table>
+            </thead>
+          </table>
+        )}
       </div>
 
       {/* Table Scrollable Body: Scrolling strictly below the header divider */}

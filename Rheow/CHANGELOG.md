@@ -9,11 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Replaced the bulk "Cancel" button in the download table with a bulk "Delete" action, allowing removal of all selected downloads at once.
+- Added a bulk delete confirmation modal showing selected item count, total download size, preview list of items, and an option to also delete downloaded files from disk.
 - Updates now appear in a notification in the bottom-right corner with the new version and its release notes. Clicking it opens **Settings → Updates**.
 - After Rheow restarts on a new version, a one-time **What's new** window shows that version's changelog.
 
 ### Changed
 
+- Made the download table selection toolbar fluidly responsive, ensuring Pause, Resume, Delete, and Clear selection controls remain fully visible without horizontal clipping at 1000×600.
 - Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.
 - Combined the extensions address bar and browser launch button into a single compact toolbar in the setup wizard, and the first step now tells you to click that button instead of copying the address.
 - Removed repetitive setup subtitle copy and redundant bridge security note from the browser integration wizard for a cleaner, high-focus layout.

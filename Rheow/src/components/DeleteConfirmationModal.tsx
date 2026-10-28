@@ -16,7 +16,8 @@ import { formatBytes, truncateFileName } from '../utils/format';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
-  item: DownloadItem | null;
+  item?: DownloadItem | null;
+  items?: DownloadItem[];
   defaultDeleteFile?: boolean;
   onClose: () => void;
   onConfirm: (deleteFile: boolean, dontShowAgain: boolean) => void;
@@ -60,6 +61,7 @@ function getCategoryBadgeStyle(cat: DownloadCategory) {
 export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
   isOpen,
   item,
+  items,
   defaultDeleteFile = false,
   onClose,
   onConfirm,
@@ -92,7 +94,16 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, deleteFile, dontShowAgain, onClose, onConfirm]);
 
-  if (!isOpen || !item) return null;
+  const targetItems = items && items.length > 0 ? items : item ? [item] : [];
+  if (!isOpen || targetItems.length === 0) return null;
+
+  const isBulk = targetItems.length > 1;
+  const targetCount = targetItems.length;
+  const singleItem = !isBulk ? targetItems[0] : null;
+  const totalBytes = targetItems.reduce(
+    (acc, d) => acc + (d.totalSize || d.downloadedSize || 0),
+    0
+  );
 
   return (
     <div
@@ -117,10 +128,12 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
                 id="delete-dialog-title"
                 className="text-sm font-semibold text-[#171717] tracking-tight"
               >
-                Delete Download
+                {isBulk ? `Delete ${targetCount} Downloads` : 'Delete Download'}
               </h2>
               <p className="text-[11px] text-[#737373] mt-0.5">
-                Confirm download removal
+                {isBulk
+                  ? `Confirm removal of ${targetCount} selected downloads`
+                  : 'Confirm download removal'}
               </p>
             </div>
           </div>
@@ -139,46 +152,85 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
         {/* Modal Body */}
         <div className="p-5 flex flex-col gap-4">
           <p className="text-xs text-[#525252] leading-relaxed">
-            Are you sure you want to remove this download from Rheow?
+            {isBulk
+              ? `Are you sure you want to remove ${targetCount} selected downloads from Rheow?`
+              : 'Are you sure you want to remove this download from Rheow?'}
           </p>
 
           {/* Item Preview Card */}
-          <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2 min-w-0">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span className="shrink-0">{getCategoryIcon(item.category)}</span>
-                <span
-                  className="font-medium text-xs text-[#171717] truncate"
-                  title={item.fileName}
-                >
-                  {truncateFileName(item.fileName, 38)}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getCategoryBadgeStyle(
-                    item.category
-                  )}`}
-                >
-                  {item.category}
+          {isBulk ? (
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-[#171717]">
+                  {targetCount} downloads selected
                 </span>
                 <span className="text-[11px] font-mono text-[#737373]">
-                  {formatBytes(item.totalSize || item.downloadedSize)}
+                  Total: {formatBytes(totalBytes)}
                 </span>
               </div>
-            </div>
-
-            {/* Destination Directory Display */}
-            {item.destinationPath && (
-              <div
-                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-lg text-[11px] font-mono text-[#525252] truncate"
-                title={item.destinationPath}
-              >
-                <Folder className="w-3.5 h-3.5 text-[#ea580c] shrink-0" />
-                <span className="truncate">{item.destinationPath}</span>
+              <div className="max-h-28 overflow-y-auto pr-1 flex flex-col gap-1.5 scrollbar-thin">
+                {targetItems.slice(0, 5).map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-2 text-[11px] text-[#525252] min-w-0"
+                  >
+                    <span className="shrink-0">{getCategoryIcon(d.category)}</span>
+                    <span
+                      className="truncate flex-1 font-medium text-[#171717]"
+                      title={d.fileName}
+                    >
+                      {truncateFileName(d.fileName, 32)}
+                    </span>
+                    <span className="font-mono text-[#737373] shrink-0 text-[10px]">
+                      {formatBytes(d.totalSize || d.downloadedSize)}
+                    </span>
+                  </div>
+                ))}
+                {targetCount > 5 && (
+                  <div className="text-[10px] text-[#737373] italic pl-5">
+                    and {targetCount - 5} more...
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          ) : singleItem ? (
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="shrink-0">{getCategoryIcon(singleItem.category)}</span>
+                  <span
+                    className="font-medium text-xs text-[#171717] truncate"
+                    title={singleItem.fileName}
+                  >
+                    {truncateFileName(singleItem.fileName, 38)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getCategoryBadgeStyle(
+                      singleItem.category
+                    )}`}
+                  >
+                    {singleItem.category}
+                  </span>
+                  <span className="text-[11px] font-mono text-[#737373]">
+                    {formatBytes(singleItem.totalSize || singleItem.downloadedSize)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Destination Directory Display */}
+              {singleItem.destinationPath && (
+                <div
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-[#e5e5e5] rounded-lg text-[11px] font-mono text-[#525252] truncate"
+                  title={singleItem.destinationPath}
+                >
+                  <Folder className="w-3.5 h-3.5 text-[#ea580c] shrink-0" />
+                  <span className="truncate">{singleItem.destinationPath}</span>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {/* Options */}
           <div className="flex flex-col gap-2.5">
@@ -198,10 +250,12 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
               />
               <div className="flex-1 min-w-0">
                 <span className="font-semibold text-xs text-[#171717] block">
-                  Also delete file from disk
+                  {isBulk ? 'Also delete files from disk' : 'Also delete file from disk'}
                 </span>
                 <span className="text-[11px] text-[#737373] block mt-0.5">
-                  Permanently removes the downloaded file from your computer.
+                  {isBulk
+                    ? 'Permanently removes the downloaded files from your computer.'
+                    : 'Permanently removes the downloaded file from your computer.'}
                 </span>
                 {deleteFile && (
                   <div className="flex items-center gap-1 text-[11px] text-red-600 font-medium mt-1.5">
@@ -248,7 +302,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             className="h-8.5 px-4 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95"
           >
             <Trash2 className="w-3.5 h-3.5 stroke-[2]" />
-            <span>Delete Download</span>
+            <span>{isBulk ? `Delete ${targetCount} Downloads` : 'Delete Download'}</span>
           </button>
         </div>
       </div>

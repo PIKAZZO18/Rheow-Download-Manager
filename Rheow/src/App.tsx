@@ -832,21 +832,50 @@ export function App() {
     setSelectedIds(new Set());
   };
 
-  const handleBulkCancel = async () => {
-    const targets = selectedDownloads.filter(
-      (d) => d.status === 'downloading' || d.status === 'queued' || d.status === 'paused'
-    );
+  const handleBulkDeleteRequest = (initialDeleteFile: boolean = false) => {
+    if (selectedDownloads.length === 0) return;
+
+    if (!settings.confirmDeletePrompt) {
+      handleBulkDelete(
+        settings.deleteFileFromDiskDefault || initialDeleteFile,
+        selectedDownloads
+      );
+      return;
+    }
+
+    setDeleteModalState({
+      items: selectedDownloads,
+      initialDeleteFile: initialDeleteFile || settings.deleteFileFromDiskDefault,
+    });
+  };
+
+  const handleBulkDelete = async (
+    deleteFile: boolean = false,
+    targets = selectedDownloads
+  ) => {
     if (targets.length === 0) return;
 
-    await Promise.allSettled(targets.map((d) => invoke('cancel_download', { id: d.id })));
-    const ids = new Set(targets.map((d) => d.id));
-    setDownloads((prev) =>
-      prev.map((d) =>
-        ids.has(d.id)
-          ? { ...d, status: 'cancelled', speedBytesPerSecond: 0, eta: 'Cancelled' }
-          : d
-      )
-    );
+    const ids = targets.map((d) => d.id);
+    const idSet = new Set(ids);
+
+    try {
+      await Promise.allSettled(
+        targets.map((d) => invoke('delete_download', { id: d.id, deleteFile }))
+      );
+      setToastMessage(
+        deleteFile
+          ? `${targets.length} downloads and files deleted from disk`
+          : `${targets.length} downloads removed from list`
+      );
+    } catch (err) {
+      console.error('Failed to bulk delete downloads:', err);
+      setToastMessage('Failed to delete downloads');
+    }
+
+    setDownloads((prev) => prev.filter((d) => !idSet.has(d.id)));
+    if (selectedId && idSet.has(selectedId)) {
+      setSelectedId(undefined);
+    }
     setSelectedIds(new Set());
   };
 
@@ -863,7 +892,8 @@ export function App() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deleteModalState, setDeleteModalState] = useState<{
-    item: DownloadItem;
+    item?: DownloadItem;
+    items?: DownloadItem[];
     initialDeleteFile: boolean;
   } | null>(null);
 
@@ -942,7 +972,6 @@ export function App() {
 
   const handleConfirmDeleteModal = (deleteFile: boolean, dontShowAgain: boolean) => {
     if (!deleteModalState) return;
-    const { id } = deleteModalState.item;
 
     if (dontShowAgain) {
       const updatedSettings: RheowSettings = {
@@ -957,7 +986,11 @@ export function App() {
       );
     }
 
-    handleDelete(id, deleteFile);
+    if (deleteModalState.items && deleteModalState.items.length > 0) {
+      handleBulkDelete(deleteFile, deleteModalState.items);
+    } else if (deleteModalState.item) {
+      handleDelete(deleteModalState.item.id, deleteFile);
+    }
     setDeleteModalState(null);
   };
 
@@ -1369,16 +1402,14 @@ export function App() {
                 bulkActions={{
                   pause: handleBulkPause,
                   resume: handleBulkResume,
-                  cancel: handleBulkCancel,
+                  delete: () => handleBulkDeleteRequest(),
                   canPause: selectedDownloads.some(
                     (d) => d.status === 'downloading' || d.status === 'queued'
                   ),
                   canResume: selectedDownloads.some(
                     (d) => d.status === 'paused' || d.status === 'error' || d.status === 'cancelled'
                   ),
-                  canCancel: selectedDownloads.some(
-                    (d) => d.status === 'downloading' || d.status === 'queued' || d.status === 'paused'
-                  ),
+                  canDelete: selectedDownloads.length > 0,
                 }}
               />
             </>
@@ -1596,6 +1627,7 @@ export function App() {
       <DeleteConfirmationModal
         isOpen={!!deleteModalState}
         item={deleteModalState?.item ?? null}
+        items={deleteModalState?.items}
         defaultDeleteFile={deleteModalState?.initialDeleteFile ?? false}
         onClose={() => setDeleteModalState(null)}
         onConfirm={handleConfirmDeleteModal}
