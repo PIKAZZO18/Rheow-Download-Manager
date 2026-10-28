@@ -3,7 +3,6 @@ import {
   Trash2,
   X,
   Folder,
-  AlertTriangle,
   Archive,
   Terminal,
   Film,
@@ -229,27 +228,19 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] divide-y divide-[#e5e5e5] overflow-hidden">
             {/* Option 1: Delete file from directory */}
             <label
-              className={`flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors cursor-pointer select-none ${
+              className={`flex items-center gap-2.5 px-3.5 py-2.5 transition-colors cursor-pointer select-none ${
                 deleteFile ? 'bg-red-50/60' : 'hover:bg-neutral-100/50'
               }`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <input
-                  type="checkbox"
-                  checked={deleteFile}
-                  onChange={(e) => setDeleteFile(e.target.checked)}
-                  className="w-4 h-4 rounded text-red-600 focus:ring-red-600 accent-red-600 cursor-pointer shrink-0"
-                />
-                <span className="text-xs font-medium text-[#171717] truncate">
-                  {isBulk ? 'Also delete files from disk' : 'Also delete file from disk'}
-                </span>
-              </div>
-              {deleteFile && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-red-600 uppercase tracking-wider px-1.5 py-0.5 rounded bg-red-100/80 border border-red-200/60 shrink-0">
-                  <AlertTriangle className="w-3 h-3 stroke-[2.5]" />
-                  Permanent
-                </span>
-              )}
+              <input
+                type="checkbox"
+                checked={deleteFile}
+                onChange={(e) => setDeleteFile(e.target.checked)}
+                className="w-4 h-4 rounded text-red-600 focus:ring-red-600 accent-red-600 cursor-pointer shrink-0"
+              />
+              <span className="text-xs font-medium text-[#171717] truncate">
+                {isBulk ? 'Also delete files from disk' : 'Also delete file from disk'}
+              </span>
             </label>
 
             {/* Option 2: Don't show again */}

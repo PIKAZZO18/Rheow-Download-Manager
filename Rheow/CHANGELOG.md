@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Polished the delete confirmation modal layout by removing redundant subtext, aligning the header, and grouping options into a clean, compact panel with an inline badge for permanent disk deletion.
+- Polished the delete confirmation modal layout by removing redundant subtext, aligning the header, and grouping options into a clean, minimalist checkbox panel without distracting badges.
 - Removed redundant "Apply an action to every selected download" helper text from the download table selection bar for a clean, distraction-free toolbar.
 - Made the download table selection toolbar fluidly responsive, ensuring Pause, Resume, Delete, and Clear selection controls remain fully visible without horizontal clipping at 1000×600.
 - Streamlined the browser extension setup wizard into a unified 2-step flow, eliminating the duplicate extension folder path box and redundant intermediate screen.
