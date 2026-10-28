@@ -1623,6 +1623,7 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(move |app| {
+            let _ = prepare_extension_copy(app.handle());
             server::init_bridge_token(app.handle());
             server::start_http_server(app.handle().clone());
 

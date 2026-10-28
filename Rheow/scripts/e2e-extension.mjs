@@ -15,7 +15,7 @@
 // Exit codes: 0 = all passed, 1 = a check failed, 2 = setup problem.
 
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import http from 'node:http';
 import net from 'node:net';
@@ -312,6 +312,19 @@ async function instrument(worker) {
   `);
 }
 
+function getAuthToken() {
+  const localApp = process.env.LOCALAPPDATA;
+  if (!localApp) return null;
+  const authPath = path.join(localApp, 'com.rheow.app', 'browser-extension', 'auth.json');
+  try {
+    if (existsSync(authPath)) {
+      const data = JSON.parse(readFileSync(authPath, 'utf8'));
+      return data.token || null;
+    }
+  } catch {}
+  return null;
+}
+
 async function main() {
   const browserPath = resolveBrowser(parseArgs(process.argv.slice(2)));
   if (!browserPath) {
@@ -319,13 +332,26 @@ async function main() {
     process.exit(2);
   }
 
+  const token = getAuthToken();
+  const healthHeaders = { 'X-Rheow-Client': 'rheow-extension' };
+  if (token) healthHeaders['X-Rheow-Token'] = token;
+
   const health = await fetch('http://127.0.0.1:41789/api/health', {
-    headers: { 'X-Rheow-Client': 'rheow-extension' },
+    headers: healthHeaders,
   }).catch(() => null);
   if (!health || !health.ok) {
     console.error('Rheow tidak berjalan di http://127.0.0.1:41789.');
     console.error('Jalankan aplikasinya dulu, lalu ulangi tes ini.');
     process.exit(2);
+  }
+
+  const extensionAuthPath = path.join(EXTENSION_DIR, 'auth.json');
+  let cleanExtensionAuth = false;
+  if (token && !existsSync(extensionAuthPath)) {
+    try {
+      writeFileSync(extensionAuthPath, JSON.stringify({ token }), 'utf8');
+      cleanExtensionAuth = true;
+    } catch {}
   }
 
   const profileDir = await mkdtemp(path.join(tmpdir(), 'rheow-e2e-'));
@@ -422,10 +448,9 @@ async function main() {
         try {
           const resp = await fetch('http://127.0.0.1:41789/api/add_download', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Rheow-Client': 'rheow-extension'
-            },
+            headers: await bridgeHeaders({
+              'Content-Type': 'application/json'
+            }),
             body: JSON.stringify({
               url: 'https://example.com/rheow-e2e-direct.zip',
               filename: 'rheow-e2e-direct.zip',
@@ -460,10 +485,9 @@ async function main() {
         try {
           const resp = await fetch('http://127.0.0.1:41789/api/add_batch', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Rheow-Client': 'rheow-extension'
-            },
+            headers: await bridgeHeaders({
+              'Content-Type': 'application/json'
+            }),
             body: JSON.stringify({
               urls: ['https://example.com/batch1.zip', 'https://example.com/batch2.zip'],
               referer: 'https://example.com'
@@ -505,6 +529,59 @@ async function main() {
     record('Popup melaporkan Connected', popupStatus === 'Connected', String(popupStatus));
 
     try {
+      const toggleState = await evalAsyncPoll(
+        popup,
+        `
+        (async () => {
+          const toggle = document.getElementById('interceptToggle');
+          const before = toggle.checked;
+          toggle.click();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          const stored = await chrome.storage.local.get(['autoIntercept']);
+          toggle.click();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          return { before, after: !before, stored: stored.autoIntercept };
+        })().then((value) => { globalThis.__rheowAsync = value; })
+      `,
+        10000
+      );
+      record(
+        'Toggle intersepsi tersimpan',
+        toggleState?.stored === toggleState?.after && toggleState?.after !== toggleState?.before,
+        JSON.stringify(toggleState)
+      );
+    } catch (error) {
+      record('Toggle intersepsi tersimpan', false, error.message);
+    }
+
+    try {
+      const snifferToggleState = await evalAsyncPoll(
+        popup,
+        `
+        (async () => {
+          const toggle = document.getElementById('snifferToggle');
+          const before = toggle.checked;
+          toggle.click();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          const stored = await chrome.storage.local.get(['mediaSnifferEnabled']);
+          toggle.click();
+          await new Promise((resolve) => setTimeout(resolve, 150));
+          return { before, after: !before, stored: stored.mediaSnifferEnabled };
+        })().then((value) => { globalThis.__rheowAsync = value; })
+      `,
+        10000
+      );
+      record(
+        'Toggle media sniffer tersimpan',
+        snifferToggleState?.stored === snifferToggleState?.after &&
+          snifferToggleState?.after !== snifferToggleState?.before,
+        JSON.stringify(snifferToggleState)
+      );
+    } catch (error) {
+      record('Toggle media sniffer tersimpan', false, error.message);
+    }
+
+    try {
       const popupSend = await popup.evaluate(
         `
         (async () => {
@@ -525,57 +602,6 @@ async function main() {
       record('Quick send dari popup', popupSend === 'Sent!', String(popupSend));
     } catch (error) {
       record('Quick send dari popup', false, error.message);
-    }
-
-    try {
-      const toggleState = await popup.evaluate(
-        `
-        (async () => {
-          const toggle = document.getElementById('interceptToggle');
-          const before = toggle.checked;
-          toggle.click();
-          await new Promise((resolve) => setTimeout(resolve, 150));
-          const stored = await chrome.storage.local.get(['autoIntercept']);
-          toggle.click();
-          await new Promise((resolve) => setTimeout(resolve, 150));
-          return { before, after: !before, stored: stored.autoIntercept };
-        })()
-      `,
-        8000
-      );
-      record(
-        'Toggle intersepsi tersimpan',
-        toggleState?.stored === toggleState?.after && toggleState?.after !== toggleState?.before,
-        JSON.stringify(toggleState)
-      );
-    } catch (error) {
-      record('Toggle intersepsi tersimpan', false, error.message);
-    }
-
-    try {
-      const snifferToggleState = await popup.evaluate(
-        `
-        (async () => {
-          const toggle = document.getElementById('snifferToggle');
-          const before = toggle.checked;
-          toggle.click();
-          await new Promise((resolve) => setTimeout(resolve, 150));
-          const stored = await chrome.storage.local.get(['mediaSnifferEnabled']);
-          toggle.click();
-          await new Promise((resolve) => setTimeout(resolve, 150));
-          return { before, after: !before, stored: stored.mediaSnifferEnabled };
-        })()
-      `,
-        8000
-      );
-      record(
-        'Toggle media sniffer tersimpan',
-        snifferToggleState?.stored === snifferToggleState?.after &&
-          snifferToggleState?.after !== snifferToggleState?.before,
-        JSON.stringify(snifferToggleState)
-      );
-    } catch (error) {
-      record('Toggle media sniffer tersimpan', false, error.message);
     }
     popup.close();
 
@@ -682,6 +708,9 @@ async function main() {
 
     worker.close();
   } finally {
+    if (cleanExtensionAuth && existsSync(extensionAuthPath)) {
+      try { unlinkSync(extensionAuthPath); } catch {}
+    }
     killProcessTree(chrome);
     await sleep(1500);
     await new Promise((resolve) => fixture.close(resolve));
