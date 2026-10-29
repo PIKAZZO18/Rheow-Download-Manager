@@ -56,7 +56,7 @@ impl Default for EngineSettings {
             open_folder_on_finish_default: true,
             confirm_delete_prompt: true,
             delete_file_from_disk_default: false,
-            autostart_enabled: false,
+            autostart_enabled: true,
             close_to_tray: true,
             start_minimized: false,
             category_subfolders: HashMap::new(),
@@ -282,7 +282,7 @@ mod tests {
         )
         .expect("old settings JSON should deserialize");
 
-        assert!(!parsed.autostart_enabled);
+        assert!(parsed.autostart_enabled);
         assert!(parsed.close_to_tray);
         assert!(!parsed.start_minimized);
     }

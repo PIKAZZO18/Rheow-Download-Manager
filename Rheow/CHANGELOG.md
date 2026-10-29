@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- New installs now enable **Launch Rheow at Windows sign-in** by default. Existing installs keep whatever preference they already saved, and the option can be turned off in **Settings → Desktop**.
 - Polished the delete confirmation modal layout by removing redundant subtext, aligning the header, and grouping options into a clean, minimalist checkbox panel without distracting badges.
 - Removed redundant "Apply an action to every selected download" helper text from the download table selection bar for a clean, distraction-free toolbar.
 - Made the download table selection toolbar fluidly responsive, ensuring Pause, Resume, Delete, and Clear selection controls remain fully visible without horizontal clipping at 1000×600.

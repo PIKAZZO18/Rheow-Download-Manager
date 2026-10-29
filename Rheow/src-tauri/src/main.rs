@@ -203,11 +203,17 @@ async fn load_settings(
     }
 
     // The registry is the source of truth: the user may have removed the
-    // startup entry from Task Manager without opening Rheow.
-    settings.autostart_enabled = app
-        .autolaunch()
-        .is_enabled()
-        .unwrap_or(settings.autostart_enabled);
+    // startup entry from Task Manager without opening Rheow. New installs opt
+    // into launch-at-sign-in by default; existing installs keep the choice the
+    // user already made. Debug builds never touch the registry so `tauri dev`
+    // does not register a development executable at sign-in.
+    let autolaunch = app.autolaunch();
+    let registered = autolaunch.is_enabled().unwrap_or(false);
+    settings.autostart_enabled = if !present && !registered && !cfg!(debug_assertions) {
+        autolaunch.enable().is_ok()
+    } else {
+        registered
+    };
 
     // Keep running when window is closed defaults to true when application is launched
     settings.close_to_tray = true;

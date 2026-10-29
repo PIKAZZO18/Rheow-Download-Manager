@@ -80,7 +80,7 @@ export const DEFAULT_SETTINGS: RheowSettings = {
   openFolderOnFinishDefault: true,
   confirmDeletePrompt: true,
   deleteFileFromDiskDefault: false,
-  autostartEnabled: false,
+  autostartEnabled: true,
   closeToTray: true,
   startMinimized: false,
   categorySubfolders: { ...DEFAULT_CATEGORY_SUBFOLDERS },

@@ -118,9 +118,12 @@ New installs use a per-user NSIS installer and do not require administrator
 rights. Existing per-machine installs should be uninstalled once before
 installing `1.0.2`, so the updater can replace files without elevation.
 
+New installs enable **Launch Rheow at Windows sign-in** by default. You can turn
+it off, or enable **Start minimized in the tray**, in **Settings → Desktop**.
+
 ### Windows SmartScreen
 
-The `1.0.2` installer is not Authenticode-signed yet, so Windows may show
+The installer is not Authenticode-signed, so Windows may show
 **Windows protected your PC** with **Unknown publisher**. This is separate from
 Tauri's update signature, which verifies update packages inside Rheow. Before
 running the installer, compare its SHA-256 with the value published in the
@@ -131,7 +134,7 @@ Get-FileHash .\Rheow_1.0.2_x64-setup.exe -Algorithm SHA256
 ```
 
 If the hash matches, choose **More info → Run anyway**. Authenticode signing is
-planned for a future release.
+not currently available.
 
 Rheow never installs an update silently. When an update is available you can:
 
