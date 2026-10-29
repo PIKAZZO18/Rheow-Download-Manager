@@ -4,6 +4,16 @@
 
 Rheow focuses on core performance strengths: multi-segment HTTP Range chunking, disk pre-allocation, and browser integration. It replaces detached floating download popups with a unified dashboard and a real-time chunk visualizer.
 
+## 📸 Screenshots
+
+![Rheow dashboard with the category sidebar, status filters, and per-drive storage meters](public/Rheow%20Showcase01.png)
+
+*Dashboard overview: category sidebar, status filter pills, and live per-drive storage meters.*
+
+![Rheow downloading five files at once with multi-segment progress bars and per-row controls](public/Rheow%20Showcase02.png)
+
+*Active downloads: multi-segment progress, per-file speed and ETA, inline pause and delete, plus the Resume Supported badge.*
+
 ---
 
 ## Key Highlights & Architecture
