@@ -36,7 +36,7 @@
     "shortDescription": "Rheow Download Manager",
     "longDescription": "Blazing-fast multi-threaded download manager with intelligent chunking, queue scheduling, and browser interception.",
     "license": "MIT",
-    "licenseFile": "../LICENSE",
+    "licenseFile": "../../LICENSE",
     "category": "Utility",
     "resources": {
       "../extension": "extension"
