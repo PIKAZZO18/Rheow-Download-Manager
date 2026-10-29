@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:e2e": "node scripts/e2e-extension.mjs"
+    "test:e2e": "node scripts/e2e-extension.mjs",
+    "test:release-notes": "node scripts/test-release-notes.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

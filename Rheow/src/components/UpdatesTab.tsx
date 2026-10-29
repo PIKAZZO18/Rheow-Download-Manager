@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { UpdateState, UpdaterSettings } from '../types/updater';
 import { formatBytes } from '../utils/format';
+import { plainReleaseNotes } from '../utils/releaseNotes';
 
 interface UpdatesTabProps {
   state: UpdateState | null;
@@ -210,7 +211,8 @@ export const UpdatesTab: React.FC<UpdatesTabProps> = ({
             )}
           </div>
           <p className="text-[11px] text-[#525252] leading-relaxed whitespace-pre-wrap max-h-40 overflow-y-auto rheow-scrollbar">
-            {state.info.notes.trim() || 'No release notes were provided for this version.'}
+            {plainReleaseNotes(state.info.notes) ||
+              'No release notes were provided for this version.'}
           </p>
         </div>
       )}
