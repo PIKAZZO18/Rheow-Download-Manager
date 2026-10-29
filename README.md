@@ -16,7 +16,17 @@ A modern download manager for Windows, built with Rust (Tauri v2) and React 19.
 
 Rheow downloads files through a multi-segment HTTP engine and displays progress inside a single dashboard. The backend uses `tokio` and `reqwest` to write incoming bytes directly into pre-allocated file space on disk, avoiding post-download file merging. A Manifest V3 browser extension routes downloads from Chromium-based browsers to the local app through a loopback HTTP bridge.
 
-Pre-built setup installers are available on the [Releases](https://github.com/PIKAZZO18/Rheow-Download-Manager/releases/download/v1.0.0/Rheow_1.0.0_x64-setup.exe) page. You can also build the application directly from source.
+Pre-built setup installers are available on the [Releases](https://github.com/PIKAZZO18/Rheow-Download-Manager/releases/latest) page. You can also build the application directly from source.
+
+## Screenshots
+
+![Rheow dashboard with the category sidebar, status filters, and per-drive storage meters](Rheow/docs/screenshots/rheow-showcase-01.png)
+
+*Dashboard overview: category sidebar, status filter pills, and live per-drive storage meters.*
+
+![Rheow downloading five files at once with multi-segment progress bars and per-row controls](Rheow/docs/screenshots/rheow-showcase-02.png)
+
+*Active downloads: multi-segment progress, per-file speed and ETA, inline pause and delete, plus the Resume Supported badge.*
 
 ---
 
@@ -55,6 +65,7 @@ Pre-built setup installers are available on the [Releases](https://github.com/PI
 ├── README.md
 ├── rheow-horizontal-dark.png
 └── Rheow/
+    ├── docs/screenshots/       # README screenshots
     ├── extension/              # Manifest V3 browser extension
     ├── public/                 # Static assets and brand icons
     ├── scripts/                # Bridge and integration test scripts
@@ -99,7 +110,7 @@ npx tauri build
 The installer will be generated at:
 
 ```text
-Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.0_x64-setup.exe
+Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.0.2_x64-setup.exe
 ```
 
 To build only the standalone binary without packaging:
@@ -159,6 +170,26 @@ The Rheow desktop installer packages the browser extension. On first launch, the
 You can reopen this wizard at any time from **Settings -> Browser -> Open wizard**.
 
 For local development, load the `Rheow\extension` directory as an unpacked extension in Chrome, Edge, or Brave.
+
+---
+
+## Installing and Updating
+
+New installs use a per-user NSIS installer and do not require administrator rights. Existing per-machine installs should be uninstalled once before installing `1.0.2`, so the updater can replace files without elevation.
+
+New installs enable **Launch Rheow at Windows sign-in** by default. You can turn it off, or enable **Start minimized in the tray**, in **Settings -> Desktop**.
+
+Rheow checks GitHub Releases shortly after startup and every 24 hours. Updates are verified with a Tauri signing key, downloaded only after you click **Download**, and installed only after you confirm. Active downloads are paused with your permission, and the database is backed up to `%APPDATA%\Rheow\backups` before the installer runs. Automatic checks can be disabled in **Settings -> Updates**.
+
+### Windows SmartScreen
+
+The installer is not Authenticode-signed, so Windows may show **Windows protected your PC** with **Unknown publisher**. This is separate from Tauri's update signature, which verifies update packages inside Rheow. Before running the installer, compare its SHA-256 with the value published in the release notes:
+
+```powershell
+Get-FileHash .\Rheow_1.0.2_x64-setup.exe -Algorithm SHA256
+```
+
+If the hash matches, choose **More info -> Run anyway**.
 
 ---
 
