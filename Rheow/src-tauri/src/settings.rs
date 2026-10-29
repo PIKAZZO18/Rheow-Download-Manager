@@ -253,11 +253,17 @@ mod tests {
         .sanitized();
 
         assert_eq!(
-            settings.category_subfolders.get("Video").map(String::as_str),
+            settings
+                .category_subfolders
+                .get("Video")
+                .map(String::as_str),
             Some("Media\\Video")
         );
         assert_eq!(
-            settings.category_subfolders.get("Music").map(String::as_str),
+            settings
+                .category_subfolders
+                .get("Music")
+                .map(String::as_str),
             Some("")
         );
         assert!(!settings.category_subfolders.contains_key("Unknown"));
@@ -266,10 +272,9 @@ mod tests {
 
     #[test]
     fn old_settings_json_without_category_map_still_loads() {
-        let parsed: EngineSettings = serde_json::from_str(
-            r#"{"maxConnections":4,"defaultDownloadPath":"D:\\Downloads"}"#,
-        )
-        .expect("old settings JSON should deserialize");
+        let parsed: EngineSettings =
+            serde_json::from_str(r#"{"maxConnections":4,"defaultDownloadPath":"D:\\Downloads"}"#)
+                .expect("old settings JSON should deserialize");
 
         assert_eq!(parsed.max_connections, 4);
         assert!(parsed.category_subfolders.is_empty());
@@ -277,10 +282,9 @@ mod tests {
 
     #[test]
     fn old_settings_json_without_desktop_fields_uses_defaults() {
-        let parsed: EngineSettings = serde_json::from_str(
-            r#"{"maxConnections":4,"defaultDownloadPath":"D:\\Downloads"}"#,
-        )
-        .expect("old settings JSON should deserialize");
+        let parsed: EngineSettings =
+            serde_json::from_str(r#"{"maxConnections":4,"defaultDownloadPath":"D:\\Downloads"}"#)
+                .expect("old settings JSON should deserialize");
 
         assert!(parsed.autostart_enabled);
         assert!(parsed.close_to_tray);
@@ -317,8 +321,14 @@ mod tests {
         };
 
         let json = serde_json::to_value(&settings).expect("settings should serialize");
-        assert_eq!(json.get("speedLimiterMode"), Some(&serde_json::json!("global")));
-        assert_eq!(json.get("globalSpeedLimitKb"), Some(&serde_json::json!(2048)));
+        assert_eq!(
+            json.get("speedLimiterMode"),
+            Some(&serde_json::json!("global"))
+        );
+        assert_eq!(
+            json.get("globalSpeedLimitKb"),
+            Some(&serde_json::json!(2048))
+        );
 
         let parsed: EngineSettings =
             serde_json::from_value(json).expect("settings should deserialize");
@@ -363,9 +373,10 @@ mod tests {
         assert_eq!(parsed, settings);
 
         // Settings written by an older build have no pending-notes fields.
-        let legacy: UpdaterSettings =
-            serde_json::from_str(r#"{"autoCheck":true,"lastCheckAt":null,"dismissedVersion":null}"#)
-                .expect("legacy updater settings should deserialize");
+        let legacy: UpdaterSettings = serde_json::from_str(
+            r#"{"autoCheck":true,"lastCheckAt":null,"dismissedVersion":null}"#,
+        )
+        .expect("legacy updater settings should deserialize");
         assert!(legacy.auto_check);
         assert!(legacy.pending_notes_version.is_none());
         assert!(legacy.pending_notes.is_none());
@@ -385,7 +396,10 @@ mod tests {
         let json = serde_json::to_value(&settings).expect("scheduler settings should serialize");
         assert_eq!(json.get("enabled"), Some(&serde_json::json!(true)));
         assert_eq!(json.get("startTime"), Some(&serde_json::json!("03:30")));
-        assert_eq!(json.get("actionOnFinish"), Some(&serde_json::json!("shutdown")));
+        assert_eq!(
+            json.get("actionOnFinish"),
+            Some(&serde_json::json!("shutdown"))
+        );
         assert_eq!(json.get("maxConcurrentQueue"), Some(&serde_json::json!(3)));
 
         let parsed: SchedulerSettings =

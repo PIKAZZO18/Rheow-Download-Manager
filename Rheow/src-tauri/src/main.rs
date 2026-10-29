@@ -63,7 +63,13 @@ fn build_tray(app: &AppHandle) -> tauri::Result<TrayIcon<tauri::Wry>> {
     let quit_item = MenuItem::with_id(app, "tray_quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
-        &[&show_item, &pause_item, &resume_item, &separator, &quit_item],
+        &[
+            &show_item,
+            &pause_item,
+            &resume_item,
+            &separator,
+            &quit_item,
+        ],
     )?;
 
     let mut builder = TrayIconBuilder::<tauri::Wry>::with_id("main-tray")
@@ -150,12 +156,11 @@ async fn get_default_destination(
         .filter(|p| !p.is_empty() && !p.eq_ignore_ascii_case("C:\\Downloads"))
         .or_else(|| {
             let saved_path = saved.default_download_path.trim().to_string();
-            (!saved_path.is_empty() && !saved_path.eq_ignore_ascii_case("C:\\Downloads")).then_some(saved_path)
+            (!saved_path.is_empty() && !saved_path.eq_ignore_ascii_case("C:\\Downloads"))
+                .then_some(saved_path)
         });
 
-    let downloads_dir = base
-        .map(PathBuf::from)
-        .unwrap_or(os_downloads);
+    let downloads_dir = base.map(PathBuf::from).unwrap_or(os_downloads);
 
     // The UI sends its current (possibly unsaved) mapping so the preview matches
     // what will be persisted; older callers fall back to the stored settings.
@@ -197,7 +202,10 @@ async fn load_settings(
 
     // If first time open (no saved settings yet), or if path is empty,
     // or if it was the legacy hardcoded 'C:\Downloads', default to the user's computer Downloads directory.
-    let is_legacy_default = settings.default_download_path.trim().eq_ignore_ascii_case("C:\\Downloads");
+    let is_legacy_default = settings
+        .default_download_path
+        .trim()
+        .eq_ignore_ascii_case("C:\\Downloads");
     if !present || settings.default_download_path.trim().is_empty() || is_legacy_default {
         settings.default_download_path = os_downloads.to_string_lossy().to_string();
     }
@@ -361,8 +369,7 @@ fn extension_needs_sync(src: &Path, dst: &Path) -> bool {
             continue;
         }
 
-        let (Ok(source_meta), Ok(target_meta)) =
-            (entry.metadata(), std::fs::metadata(&target))
+        let (Ok(source_meta), Ok(target_meta)) = (entry.metadata(), std::fs::metadata(&target))
         else {
             return true;
         };
@@ -460,9 +467,7 @@ fn parse_prog_id(stdout: &str) -> Option<String> {
 /// The user's default browser wins; Edge/Chrome are the fallbacks because Edge
 /// ships with Windows.
 fn find_supported_browser() -> Option<(String, PathBuf, String)> {
-    let prog_id = default_browser_prog_id()
-        .unwrap_or_default()
-        .to_lowercase();
+    let prog_id = default_browser_prog_id().unwrap_or_default().to_lowercase();
     let program_files = std::env::var_os("ProgramFiles").map(PathBuf::from);
     let program_files_x86 = std::env::var_os("ProgramFiles(x86)").map(PathBuf::from);
     let local_app_data = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
@@ -904,7 +909,10 @@ async fn add_and_start_download(
         supports_range: supports_range.unwrap_or(true),
     };
 
-    state.db.insert_download(&record).map_err(|e| e.to_string())?;
+    state
+        .db
+        .insert_download(&record)
+        .map_err(|e| e.to_string())?;
 
     if !is_later {
         let engine = state.engine.clone();
@@ -922,19 +930,21 @@ async fn add_and_start_download(
         let app_clone = app.clone();
 
         tokio::spawn(async move {
-            let _ = engine.start_download(
-                app_clone,
-                download_id,
-                url,
-                destination_path,
-                total_size,
-                count,
-                cookie,
-                referer,
-                etag,
-                last_modified,
-                speed_limit_kb,
-            ).await;
+            let _ = engine
+                .start_download(
+                    app_clone,
+                    download_id,
+                    url,
+                    destination_path,
+                    total_size,
+                    count,
+                    cookie,
+                    referer,
+                    etag,
+                    last_modified,
+                    speed_limit_kb,
+                )
+                .await;
         });
     } else {
         // Item is added to queue (Download Later)
@@ -945,10 +955,17 @@ async fn add_and_start_download(
                 "status": "queued"
             }),
         );
-        let queued_count = state.db.get_next_queued_downloads(1000).unwrap_or_default().len();
-        let _ = app.emit("queue-status-changed", serde_json::json!({
-            "queuedCount": queued_count
-        }));
+        let queued_count = state
+            .db
+            .get_next_queued_downloads(1000)
+            .unwrap_or_default()
+            .len();
+        let _ = app.emit(
+            "queue-status-changed",
+            serde_json::json!({
+                "queuedCount": queued_count
+            }),
+        );
 
         if state.engine.is_queue_running() {
             let engine = state.engine.clone();
@@ -1047,15 +1064,14 @@ async fn delete_download(
     id: String,
     delete_file: Option<bool>,
 ) -> Result<(), String> {
-    state.engine.delete_download(&app, &id, delete_file.unwrap_or(false)).await
+    state
+        .engine
+        .delete_download(&app, &id, delete_file.unwrap_or(false))
+        .await
 }
 
 #[tauri::command]
-async fn redownload(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+async fn redownload(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<(), String> {
     state.engine.redownload(&app, &id).await
 }
 
@@ -1083,28 +1099,22 @@ async fn set_download_speed_limit(
 }
 
 #[tauri::command]
-async fn pause_all_downloads(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+async fn pause_all_downloads(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     state.engine.pause_all_downloads(&app).await
 }
 
 #[tauri::command]
-async fn resume_all_downloads(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+async fn resume_all_downloads(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     state.engine.resume_all_downloads(&app).await
 }
 
 #[tauri::command]
-async fn start_queue(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+async fn start_queue(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     state.engine.set_queue_running(true);
-    let _ = app.emit("queue-status-changed", serde_json::json!({ "isRunning": true }));
+    let _ = app.emit(
+        "queue-status-changed",
+        serde_json::json!({ "isRunning": true }),
+    );
     let engine = state.engine.clone();
     tokio::spawn(async move {
         engine.process_next_queued(app).await;
@@ -1113,12 +1123,12 @@ async fn start_queue(
 }
 
 #[tauri::command]
-async fn pause_queue(
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+async fn pause_queue(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     state.engine.set_queue_running(false);
-    let _ = app.emit("queue-status-changed", serde_json::json!({ "isRunning": false }));
+    let _ = app.emit(
+        "queue-status-changed",
+        serde_json::json!({ "isRunning": false }),
+    );
     Ok(())
 }
 
@@ -1137,10 +1147,12 @@ struct QueueDetails {
 }
 
 #[tauri::command]
-async fn get_queue_details(
-    state: State<'_, AppState>,
-) -> Result<QueueDetails, String> {
-    let queued = state.db.get_next_queued_downloads(1000).unwrap_or_default().len();
+async fn get_queue_details(state: State<'_, AppState>) -> Result<QueueDetails, String> {
+    let queued = state
+        .db
+        .get_next_queued_downloads(1000)
+        .unwrap_or_default()
+        .len();
     let active = state.engine.active_downloads_count().await;
     Ok(QueueDetails {
         is_running: state.engine.is_queue_running(),
@@ -1160,9 +1172,12 @@ async fn set_queue_max_concurrent(
     let mut sched = state.scheduler_settings.lock().await;
     sched.max_concurrent_queue = count.clamp(1, 10);
     let _ = state.db.save_scheduler_settings(&sched);
-    let _ = app.emit("queue-status-changed", serde_json::json!({
-        "maxConcurrent": count
-    }));
+    let _ = app.emit(
+        "queue-status-changed",
+        serde_json::json!({
+            "maxConcurrent": count
+        }),
+    );
     Ok(())
 }
 
@@ -1181,8 +1196,13 @@ async fn save_scheduler_settings(
     settings: settings::SchedulerSettings,
 ) -> Result<(), String> {
     let sanitized = settings.sanitized();
-    state.db.save_scheduler_settings(&sanitized).map_err(|e| e.to_string())?;
-    state.engine.set_max_concurrent_downloads(sanitized.max_concurrent_queue);
+    state
+        .db
+        .save_scheduler_settings(&sanitized)
+        .map_err(|e| e.to_string())?;
+    state
+        .engine
+        .set_max_concurrent_downloads(sanitized.max_concurrent_queue);
     {
         let mut guard = state.scheduler_settings.lock().await;
         *guard = sanitized.clone();
@@ -1201,7 +1221,9 @@ async fn pick_destination_folder(app: AppHandle) -> Result<Option<String>, Strin
     use tauri_plugin_dialog::DialogExt;
     let (tx, rx) = tokio::sync::oneshot::channel();
     app.dialog().file().pick_folder(move |folder| {
-        let path_str = folder.and_then(|f| f.into_path().ok()).map(|p| p.to_string_lossy().to_string());
+        let path_str = folder
+            .and_then(|f| f.into_path().ok())
+            .map(|p| p.to_string_lossy().to_string());
         let _ = tx.send(path_str);
     });
     rx.await.map_err(|e| e.to_string())
@@ -1255,13 +1277,19 @@ async fn update_download_url(
 ) -> Result<(), String> {
     // 1. If etag and last_modified were not supplied, probe the new URL
     let (final_etag, final_last_modified) = if etag.is_none() && last_modified.is_none() {
-        let settings = state.db.get_engine_settings().unwrap_or_default().sanitized();
+        let settings = state
+            .db
+            .get_engine_settings()
+            .unwrap_or_default()
+            .sanitized();
         if let Ok(probe) = engine::probe::probe_url_with_timeout(
             &url,
             cookie.as_deref(),
             referer.as_deref(),
             settings.connect_timeout().as_secs(),
-        ).await {
+        )
+        .await
+        {
             (probe.etag, probe.last_modified)
         } else {
             (None, None)
@@ -1274,19 +1302,24 @@ async fn update_download_url(
     {
         let map = state.engine.active_downloads.lock().await;
         if let Some(active) = map.get(&id) {
-            active.cancel_flag.store(true, std::sync::atomic::Ordering::Relaxed);
+            active
+                .cancel_flag
+                .store(true, std::sync::atomic::Ordering::Relaxed);
         }
     }
 
     // 3. Update database row with new link and refreshed validators
-    state.db.update_download_url(
-        &id,
-        &url,
-        cookie.as_deref(),
-        referer.as_deref(),
-        final_etag.as_deref(),
-        final_last_modified.as_deref(),
-    ).map_err(|e| e.to_string())?;
+    state
+        .db
+        .update_download_url(
+            &id,
+            &url,
+            cookie.as_deref(),
+            referer.as_deref(),
+            final_etag.as_deref(),
+            final_last_modified.as_deref(),
+        )
+        .map_err(|e| e.to_string())?;
 
     // 4. Emit status changed event
     let _ = app.emit(
@@ -1414,7 +1447,8 @@ fn set_clipboard_text_win(_text: &str) -> bool {
 fn read_clipboard_text() -> Result<String, String> {
     #[cfg(target_os = "windows")]
     {
-        get_clipboard_text_win().ok_or_else(|| "Clipboard is empty or does not contain text".to_string())
+        get_clipboard_text_win()
+            .ok_or_else(|| "Clipboard is empty or does not contain text".to_string())
     }
     #[cfg(not(target_os = "windows"))]
     {
@@ -1553,7 +1587,9 @@ async fn run_scheduler_loop(
             let queued_items = db.get_next_queued_downloads(1).unwrap_or_default();
             if active_count == 0 && queued_items.is_empty() {
                 was_active_in_window = false;
-                eprintln!("[Rheow Scheduler] All queued downloads completed during scheduled window.");
+                eprintln!(
+                    "[Rheow Scheduler] All queued downloads completed during scheduled window."
+                );
 
                 let _ = app.emit(
                     "scheduler-event",
@@ -1578,7 +1614,10 @@ fn dirs_downloads() -> Option<PathBuf> {
 
 fn main() {
     let app_data_dir = dirs_downloads()
-        .and_then(|p| p.parent().map(|u| u.join("AppData").join("Roaming").join("Rheow")))
+        .and_then(|p| {
+            p.parent()
+                .map(|u| u.join("AppData").join("Roaming").join("Rheow"))
+        })
         .unwrap_or_else(|| PathBuf::from("."));
 
     let _ = std::fs::create_dir_all(&app_data_dir);
@@ -1594,8 +1633,8 @@ fn main() {
     startup_settings.close_to_tray = true;
     let close_to_tray = Arc::new(AtomicBool::new(startup_settings.close_to_tray));
     let close_to_tray_for_events = close_to_tray.clone();
-    let start_hidden = startup_settings.start_minimized
-        && std::env::args().any(|argument| argument == "--hidden");
+    let start_hidden =
+        startup_settings.start_minimized && std::env::args().any(|argument| argument == "--hidden");
 
     let startup_scheduler = db.get_scheduler_settings();
     let scheduler_settings = Arc::new(tokio::sync::Mutex::new(startup_scheduler));
@@ -1663,7 +1702,9 @@ fn main() {
             let engine_for_recover = engine.clone();
             let handle_for_recover = handle.clone();
             tauri::async_runtime::spawn(async move {
-                engine_for_recover.recover_after_restart(&handle_for_recover).await;
+                engine_for_recover
+                    .recover_after_restart(&handle_for_recover)
+                    .await;
             });
 
             // Start background queue scheduler loop
@@ -1698,7 +1739,10 @@ fn main() {
                     ])
                     .build(),
             ];
-            let _ = app.handle().notification().register_action_types(action_types);
+            let _ = app
+                .handle()
+                .notification()
+                .register_action_types(action_types);
 
             // Register notification action listener
             let action_handle = handle.clone();
@@ -1860,10 +1904,8 @@ mod notification_action_tests {
     }
 
     fn test_db() -> (PathBuf, Database) {
-        let dir = std::env::temp_dir().join(format!(
-            "rheow-notification-test-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("rheow-notification-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).expect("temp dir");
         let db = Database::new(&dir.join("test.db")).expect("test database");
         (dir, db)
@@ -1943,8 +1985,16 @@ mod open_browser_url_tests {
     #[tokio::test]
     async fn rejects_non_http_urls() {
         assert!(open_browser_url("calc.exe".to_string()).await.is_err());
-        assert!(open_browser_url("powershell.exe".to_string()).await.is_err());
-        assert!(open_browser_url("file:///C:/Windows/System32/cmd.exe".to_string()).await.is_err());
-        assert!(open_browser_url("javascript:alert(1)".to_string()).await.is_err());
+        assert!(open_browser_url("powershell.exe".to_string())
+            .await
+            .is_err());
+        assert!(
+            open_browser_url("file:///C:/Windows/System32/cmd.exe".to_string())
+                .await
+                .is_err()
+        );
+        assert!(open_browser_url("javascript:alert(1)".to_string())
+            .await
+            .is_err());
     }
 }

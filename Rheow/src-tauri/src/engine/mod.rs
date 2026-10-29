@@ -113,10 +113,7 @@ impl EngineManager {
             }
             Ok(_) => {}
             Err(err) => {
-                eprintln!(
-                    "[Rheow] failed to reconcile interrupted downloads: {}",
-                    err
-                );
+                eprintln!("[Rheow] failed to reconcile interrupted downloads: {}", err);
             }
         }
 
@@ -132,7 +129,8 @@ impl EngineManager {
     }
 
     pub fn set_max_concurrent_downloads(&self, count: usize) {
-        self.max_concurrent_downloads.store(count.clamp(1, 10), Ordering::Relaxed);
+        self.max_concurrent_downloads
+            .store(count.clamp(1, 10), Ordering::Relaxed);
     }
 
     pub fn get_max_concurrent_downloads(&self) -> usize {
@@ -317,7 +315,11 @@ impl EngineManager {
         Ok(())
     }
 
-    pub async fn resume_download(self: &Arc<Self>, app: &AppHandle, id: &str) -> Result<(), String> {
+    pub async fn resume_download(
+        self: &Arc<Self>,
+        app: &AppHandle,
+        id: &str,
+    ) -> Result<(), String> {
         let record = self
             .db
             .get_download_by_id(id)
@@ -384,7 +386,12 @@ impl EngineManager {
         Ok(())
     }
 
-    pub async fn cancel_download(self: &Arc<Self>, app: &AppHandle, id: &str) -> Result<(), String> {        {
+    pub async fn cancel_download(
+        self: &Arc<Self>,
+        app: &AppHandle,
+        id: &str,
+    ) -> Result<(), String> {
+        {
             let map = self.active_downloads.lock().await;
             if let Some(active) = map.get(id) {
                 active.cancel_flag.store(true, Ordering::Relaxed);
@@ -409,7 +416,12 @@ impl EngineManager {
         Ok(())
     }
 
-    pub async fn delete_download(self: &Arc<Self>, app: &AppHandle, id: &str, delete_file: bool) -> Result<(), String> {
+    pub async fn delete_download(
+        self: &Arc<Self>,
+        app: &AppHandle,
+        id: &str,
+        delete_file: bool,
+    ) -> Result<(), String> {
         {
             let map = self.active_downloads.lock().await;
             if let Some(active) = map.get(id) {
@@ -479,7 +491,9 @@ impl EngineManager {
             let _ = std::fs::remove_file(p);
         }
 
-        self.db.reset_for_redownload(id).map_err(|e| e.to_string())?;
+        self.db
+            .reset_for_redownload(id)
+            .map_err(|e| e.to_string())?;
 
         let _ = app.emit(
             "download-status-changed",
@@ -984,12 +998,7 @@ async fn execute_download(
         // Periodic checkpoint save every 2 seconds.
         if last_save_time.elapsed().as_secs() >= 2 {
             save_segment_checkpoints(&db, id, &configs_snapshot, &atoms_snapshot);
-            let _ = db.update_progress(
-                id,
-                downloaded_bytes,
-                current_speed,
-                remaining_sec as i64,
-            );
+            let _ = db.update_progress(id, downloaded_bytes, current_speed, remaining_sec as i64);
             last_save_time = Instant::now();
         }
     }
@@ -1041,15 +1050,7 @@ async fn execute_download(
         FinishKind::Failed(errors.join("; "))
     };
 
-    finish_download(
-        app,
-        &db,
-        id,
-        kind,
-        total_size,
-        actual_downloaded,
-        segments,
-    );
+    finish_download(app, &db, id, kind, total_size, actual_downloaded, segments);
     Ok(())
 }
 
@@ -1123,9 +1124,7 @@ async fn run_single_stream(
                 let _ = db.update_progress(id, 0, 0.0, 0);
 
                 // 250ms, 500ms, 1s, 2s, then 4s between attempts.
-                let delay_ms = 250u64
-                    .saturating_mul(1u64 << attempt.min(4))
-                    .min(4000);
+                let delay_ms = 250u64.saturating_mul(1u64 << attempt.min(4)).min(4000);
                 tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
             }
         }
@@ -1175,14 +1174,16 @@ async fn run_single_stream_once(
     if !resp.status().is_success() {
         let status = resp.status();
         let message = format!("Server returned HTTP {}", status);
-        return Err(if status.is_server_error()
-            || status == reqwest::StatusCode::REQUEST_TIMEOUT
-            || status == reqwest::StatusCode::TOO_MANY_REQUESTS
-        {
-            StreamFailure::Retryable(message)
-        } else {
-            StreamFailure::Fatal(message)
-        });
+        return Err(
+            if status.is_server_error()
+                || status == reqwest::StatusCode::REQUEST_TIMEOUT
+                || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            {
+                StreamFailure::Retryable(message)
+            } else {
+                StreamFailure::Fatal(message)
+            },
+        );
     }
 
     let declared_total = resp.content_length().unwrap_or(0) as i64;
@@ -1207,8 +1208,8 @@ async fn run_single_stream_once(
             break;
         }
 
-        let chunk = chunk_result
-            .map_err(|e| StreamFailure::Retryable(format!("Stream error: {}", e)))?;
+        let chunk =
+            chunk_result.map_err(|e| StreamFailure::Retryable(format!("Stream error: {}", e)))?;
         if let Some(gl) = global_limiter {
             gl.consume_with_cancel(chunk.len(), Some(cancel_flag)).await;
         }
@@ -1354,7 +1355,10 @@ fn finish_download(
             .title("Rheow Download Completed")
             .body(&format!("'{}' has finished downloading.", record.filename))
             .action_type_id("download-completed")
-            .extra("destination_path", serde_json::Value::String(record.destination_path.clone()))
+            .extra(
+                "destination_path",
+                serde_json::Value::String(record.destination_path.clone()),
+            )
             .extra("download_id", serde_json::Value::String(id.to_string()))
             .show();
     } else {
@@ -1510,10 +1514,7 @@ fn plan_segments(total_size: u64, connections: usize) -> Vec<(usize, u64, u64)> 
     ranges
 }
 
-fn build_segment_states(
-    configs: &[SegmentConfig],
-    atoms: &[Arc<AtomicU64>],
-) -> Vec<SegmentState> {
+fn build_segment_states(configs: &[SegmentConfig], atoms: &[Arc<AtomicU64>]) -> Vec<SegmentState> {
     configs
         .iter()
         .enumerate()
@@ -1732,16 +1733,7 @@ mod tests {
 
     #[test]
     fn resume_rejects_changed_size() {
-        assert!(!resume_check(
-            100,
-            None,
-            None,
-            true,
-            101,
-            None,
-            None,
-            true
-        ));
+        assert!(!resume_check(100, None, None, true, 101, None, None, true));
     }
 
     #[test]

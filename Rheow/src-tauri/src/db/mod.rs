@@ -99,7 +99,9 @@ fn map_download_row(row: &rusqlite::Row) -> rusqlite::Result<DownloadRecord> {
         etag: row.get(10).ok(),
         last_modified: row.get(11).ok(),
         open_folder_on_finish: open_flag == 1,
-        created_at: row.get(13).unwrap_or_else(|_| chrono::Utc::now().to_rfc3339()),
+        created_at: row
+            .get(13)
+            .unwrap_or_else(|_| chrono::Utc::now().to_rfc3339()),
         completed_at: row.get(14).ok(),
         cookie: row.get(15).ok(),
         referer: row.get(16).ok(),
@@ -119,9 +121,18 @@ impl Database {
         // Safe migrations for preexisting databases
         let _ = conn.execute("ALTER TABLE downloads ADD COLUMN cookie TEXT", []);
         let _ = conn.execute("ALTER TABLE downloads ADD COLUMN referer TEXT", []);
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN speed_limit_kb INTEGER", []);
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN segment_count INTEGER DEFAULT 8", []);
-        let _ = conn.execute("ALTER TABLE downloads ADD COLUMN supports_range INTEGER DEFAULT 1", []);
+        let _ = conn.execute(
+            "ALTER TABLE downloads ADD COLUMN speed_limit_kb INTEGER",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE downloads ADD COLUMN segment_count INTEGER DEFAULT 8",
+            [],
+        );
+        let _ = conn.execute(
+            "ALTER TABLE downloads ADD COLUMN supports_range INTEGER DEFAULT 1",
+            [],
+        );
 
         let db = Self {
             conn: Mutex::new(conn),
@@ -274,7 +285,12 @@ impl Database {
         Ok(())
     }
 
-    pub fn update_status_and_completion(&self, id: &str, status: &str, completed_at: Option<&str>) -> Result<()> {
+    pub fn update_status_and_completion(
+        &self,
+        id: &str,
+        status: &str,
+        completed_at: Option<&str>,
+    ) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
             "UPDATE downloads SET status = ?1, completed_at = ?2 WHERE id = ?3",
@@ -311,7 +327,13 @@ impl Database {
         Ok(())
     }
 
-    pub fn update_progress(&self, id: &str, downloaded_size: i64, speed: f64, eta_seconds: i64) -> Result<()> {
+    pub fn update_progress(
+        &self,
+        id: &str,
+        downloaded_size: i64,
+        speed: f64,
+        eta_seconds: i64,
+    ) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         if downloaded_size >= 0 {
             conn.execute(
@@ -499,7 +521,9 @@ impl Database {
 
         if integrity != "ok" {
             let _ = std::fs::remove_file(&backup_path);
-            return Err(format!("Database backup failed integrity check: {integrity}"));
+            return Err(format!(
+                "Database backup failed integrity check: {integrity}"
+            ));
         }
 
         prune_update_backups(&backup_dir, UPDATE_BACKUP_LIMIT);
@@ -549,7 +573,10 @@ impl Database {
     pub fn delete_download(&self, id: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM downloads WHERE id = ?1", params![id])?;
-        conn.execute("DELETE FROM download_segments WHERE download_id = ?1", params![id])?;
+        conn.execute(
+            "DELETE FROM download_segments WHERE download_id = ?1",
+            params![id],
+        )?;
         Ok(())
     }
 
@@ -559,14 +586,24 @@ impl Database {
             "UPDATE downloads SET downloaded_size = 0, status = 'queued', completed_at = NULL, speed = 0, eta_seconds = 0 WHERE id = ?1",
             params![id],
         )?;
-        conn.execute("DELETE FROM download_segments WHERE download_id = ?1", params![id])?;
+        conn.execute(
+            "DELETE FROM download_segments WHERE download_id = ?1",
+            params![id],
+        )?;
         Ok(())
     }
 
-    pub fn save_segments(&self, download_id: &str, segments: &[(usize, u64, u64, u64, bool)]) -> Result<()> {
+    pub fn save_segments(
+        &self,
+        download_id: &str,
+        segments: &[(usize, u64, u64, u64, bool)],
+    ) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         let tx = conn.unchecked_transaction()?;
-        tx.execute("DELETE FROM download_segments WHERE download_id = ?1", params![download_id])?;
+        tx.execute(
+            "DELETE FROM download_segments WHERE download_id = ?1",
+            params![download_id],
+        )?;
         {
             let mut stmt = tx.prepare(
                 r#"INSERT INTO download_segments (
@@ -685,7 +722,8 @@ mod tests {
     #[test]
     fn demotes_only_interrupted_downloads() {
         let db = Database::new(std::path::Path::new(":memory:")).unwrap();
-        db.insert_download(&record("active", "downloading")).unwrap();
+        db.insert_download(&record("active", "downloading"))
+            .unwrap();
         db.insert_download(&record("done", "completed")).unwrap();
         db.insert_download(&record("waiting", "queued")).unwrap();
 
@@ -735,7 +773,8 @@ mod tests {
     fn updates_download_url_and_preserves_progress() {
         let db = Database::new(std::path::Path::new(":memory:")).unwrap();
         db.insert_download(&record("dl-expired", "error")).unwrap();
-        db.save_segments("dl-expired", &[(0, 0, 1000, 250, false)]).unwrap();
+        db.save_segments("dl-expired", &[(0, 0, 1000, 250, false)])
+            .unwrap();
 
         let before = db.get_download_by_id("dl-expired").unwrap().unwrap();
         assert_eq!(before.status, "error");
@@ -749,15 +788,22 @@ mod tests {
             Some("https://example.com/page"),
             Some("\"new-etag\""),
             Some("Wed, 21 Oct 2026 07:28:00 GMT"),
-        ).unwrap();
+        )
+        .unwrap();
 
         let after = db.get_download_by_id("dl-expired").unwrap().unwrap();
         assert_eq!(after.status, "paused");
-        assert_eq!(after.url, "https://cdn.example.com/refreshed-token/file.zip");
+        assert_eq!(
+            after.url,
+            "https://cdn.example.com/refreshed-token/file.zip"
+        );
         assert_eq!(after.cookie.as_deref(), Some("session=xyz"));
         assert_eq!(after.referer.as_deref(), Some("https://example.com/page"));
         assert_eq!(after.etag.as_deref(), Some("\"new-etag\""));
-        assert_eq!(after.last_modified.as_deref(), Some("Wed, 21 Oct 2026 07:28:00 GMT"));
+        assert_eq!(
+            after.last_modified.as_deref(),
+            Some("Wed, 21 Oct 2026 07:28:00 GMT")
+        );
         // Existing bytes and segments are intact!
         assert_eq!(after.downloaded_size, 250);
         let segs = db.get_segments("dl-expired").unwrap();
@@ -806,10 +852,7 @@ mod tests {
 
     #[test]
     fn backup_before_update_creates_verified_snapshot() {
-        let dir = std::env::temp_dir().join(format!(
-            "rheow-backup-test-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let dir = std::env::temp_dir().join(format!("rheow-backup-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
 
         let db = Database::new(&dir.join("rheow.db")).unwrap();
@@ -834,10 +877,8 @@ mod tests {
 
     #[test]
     fn backup_retention_keeps_newest_two() {
-        let dir = std::env::temp_dir().join(format!(
-            "rheow-backup-prune-test-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("rheow-backup-prune-test-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
 
         for (index, seconds) in [(0, 1u64), (1, 2), (2, 3)] {

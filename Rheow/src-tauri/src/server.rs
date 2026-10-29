@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::{Mutex, OnceLock};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -158,7 +158,12 @@ pub fn init_bridge_token(app: &AppHandle) {
     let token = if let Ok(text) = std::fs::read_to_string(&path) {
         serde_json::from_str::<serde_json::Value>(&text)
             .ok()
-            .and_then(|value| value.get("token").and_then(|t| t.as_str()).map(String::from))
+            .and_then(|value| {
+                value
+                    .get("token")
+                    .and_then(|t| t.as_str())
+                    .map(String::from)
+            })
             .filter(|token| !token.is_empty())
             .unwrap_or_else(|| {
                 let fresh = uuid::Uuid::new_v4().to_string();
@@ -331,8 +336,7 @@ pub fn start_http_server(app_handle: AppHandle) {
                 let mut content_length: usize = 0;
 
                 loop {
-                    let n = match tokio::time::timeout(READ_TIMEOUT, socket.read(&mut buf)).await
-                    {
+                    let n = match tokio::time::timeout(READ_TIMEOUT, socket.read(&mut buf)).await {
                         Ok(Ok(n)) if n > 0 => n,
                         _ => break,
                     };
@@ -410,7 +414,9 @@ pub fn start_http_server(app_handle: AppHandle) {
                             head.origin,
                             head.client.is_some()
                         );
-                        let _ = socket.write_all(empty_response("403 Forbidden").as_bytes()).await;
+                        let _ = socket
+                            .write_all(empty_response("403 Forbidden").as_bytes())
+                            .await;
                         return;
                     }
                 };
@@ -497,7 +503,8 @@ pub fn start_http_server(app_handle: AppHandle) {
                             let mut seen = std::collections::HashSet::new();
                             for u in payload.urls {
                                 let trimmed = u.trim();
-                                if (trimmed.starts_with("http://") || trimmed.starts_with("https://"))
+                                if (trimmed.starts_with("http://")
+                                    || trimmed.starts_with("https://"))
                                     && seen.insert(trimmed.to_string())
                                 {
                                     unique_urls.push(trimmed.to_string());
@@ -511,7 +518,8 @@ pub fn start_http_server(app_handle: AppHandle) {
                                 let body = r#"{"error":"No valid URLs provided"}"#;
                                 let _ = socket
                                     .write_all(
-                                        json_response("400 Bad Request", &allowed_origin, body).as_bytes(),
+                                        json_response("400 Bad Request", &allowed_origin, body)
+                                            .as_bytes(),
                                     )
                                     .await;
                                 return;
@@ -676,7 +684,8 @@ mod tests {
 
         // Referer is optional
         let json_no_referer = r#"{"urls":["https://example.com/file1.zip"]}"#;
-        let payload_no_referer: super::BrowserBatchAddPayload = serde_json::from_str(json_no_referer).unwrap();
+        let payload_no_referer: super::BrowserBatchAddPayload =
+            serde_json::from_str(json_no_referer).unwrap();
         assert_eq!(payload_no_referer.urls.len(), 1);
         assert_eq!(payload_no_referer.referer, None);
     }
@@ -689,17 +698,32 @@ mod tests {
         let without = head_with_token(None, "127.0.0.1:41789", Some("rheow-extension"), None);
         assert!(authorize(&without, "GET").is_none());
         // With correct token it passes.
-        let with = head_with_token(None, "127.0.0.1:41789", Some("rheow-extension"), Some(token));
+        let with = head_with_token(
+            None,
+            "127.0.0.1:41789",
+            Some("rheow-extension"),
+            Some(token),
+        );
         assert_eq!(authorize(&with, "GET"), Some(None));
         // Wrong token rejected.
-        let wrong = head_with_token(None, "127.0.0.1:41789", Some("rheow-extension"), Some("wrong"));
+        let wrong = head_with_token(
+            None,
+            "127.0.0.1:41789",
+            Some("rheow-extension"),
+            Some("wrong"),
+        );
         assert!(authorize(&wrong, "GET").is_none());
     }
 
     #[test]
     fn options_preflight_does_not_require_token() {
         let _ = super::BRIDGE_TOKEN.set("test-token-123".to_string());
-        let request = head_with_token(Some("chrome-extension://abcdef"), "127.0.0.1:41789", None, None);
+        let request = head_with_token(
+            Some("chrome-extension://abcdef"),
+            "127.0.0.1:41789",
+            None,
+            None,
+        );
         assert_eq!(
             authorize(&request, "OPTIONS"),
             Some(Some("chrome-extension://abcdef".to_string()))

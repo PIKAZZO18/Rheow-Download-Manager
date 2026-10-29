@@ -160,7 +160,8 @@ mod tests {
 
     #[test]
     fn test_resolve_explorer_action_existing_file() {
-        let temp_dir = std::env::temp_dir().join(format!("rheow_sys_test_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("rheow_sys_test_{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp_dir).unwrap();
         let file_path = temp_dir.join("test file with spaces.bin");
         fs::write(&file_path, b"data").unwrap();
@@ -174,7 +175,8 @@ mod tests {
 
     #[test]
     fn test_resolve_explorer_action_existing_directory() {
-        let temp_dir = std::env::temp_dir().join(format!("rheow_sys_dir_test_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("rheow_sys_dir_test_{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp_dir).unwrap();
 
         let action = resolve_explorer_action(&temp_dir.to_string_lossy());
@@ -185,7 +187,8 @@ mod tests {
 
     #[test]
     fn test_resolve_explorer_action_nonexistent_file_opens_parent_dir() {
-        let temp_dir = std::env::temp_dir().join(format!("rheow_sys_nonexist_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("rheow_sys_nonexist_{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp_dir).unwrap();
         let target_file = temp_dir.join("not_downloaded_yet.zip");
 

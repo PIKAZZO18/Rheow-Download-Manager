@@ -1,4 +1,7 @@
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_RANGES, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_RANGE, RANGE};
+use reqwest::header::{
+    HeaderMap, HeaderValue, ACCEPT, ACCEPT_RANGES, CONTENT_DISPOSITION, CONTENT_LENGTH,
+    CONTENT_RANGE, RANGE,
+};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -14,7 +17,11 @@ pub struct ProbeResult {
 }
 
 #[allow(dead_code)]
-pub async fn probe_url(url: &str, cookie: Option<&str>, referer: Option<&str>) -> Result<ProbeResult, String> {
+pub async fn probe_url(
+    url: &str,
+    cookie: Option<&str>,
+    referer: Option<&str>,
+) -> Result<ProbeResult, String> {
     probe_url_with_timeout(url, cookie, referer, 30).await
 }
 
@@ -85,7 +92,8 @@ pub async fn probe_url_with_timeout(
         range_headers.insert(RANGE, HeaderValue::from_static("bytes=0-0"));
 
         if let Ok(resp) = client.get(url).headers(range_headers).send().await {
-            if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT { // 206
+            if resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
+                // 206
                 supports_range = true;
                 if let Some(cr) = resp.headers().get(CONTENT_RANGE) {
                     if let Ok(s) = cr.to_str() {
@@ -97,7 +105,8 @@ pub async fn probe_url_with_timeout(
                         }
                     }
                 }
-            } else if resp.status().is_success() { // 200
+            } else if resp.status().is_success() {
+                // 200
                 if let Some(len) = resp.headers().get(CONTENT_LENGTH) {
                     if let Ok(s) = len.to_str() {
                         total_size = s.parse::<i64>().unwrap_or(-1);
@@ -111,10 +120,18 @@ pub async fn probe_url_with_timeout(
             }
 
             if etag.is_none() {
-                etag = resp.headers().get("etag").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+                etag = resp
+                    .headers()
+                    .get("etag")
+                    .and_then(|v| v.to_str().ok())
+                    .map(|s| s.to_string());
             }
             if last_modified.is_none() {
-                last_modified = resp.headers().get("last-modified").and_then(|v| v.to_str().ok()).map(|s| s.to_string());
+                last_modified = resp
+                    .headers()
+                    .get("last-modified")
+                    .and_then(|v| v.to_str().ok())
+                    .map(|s| s.to_string());
             }
             if filename_candidate.is_none() {
                 if let Some(cd) = resp.headers().get(CONTENT_DISPOSITION) {
@@ -126,9 +143,7 @@ pub async fn probe_url_with_timeout(
         }
     }
 
-    let filename = filename_candidate.unwrap_or_else(|| {
-        extract_filename_from_url(url)
-    });
+    let filename = filename_candidate.unwrap_or_else(|| extract_filename_from_url(url));
 
     let category = determine_category(&filename);
 
@@ -185,10 +200,14 @@ pub fn determine_category(filename: &str) -> String {
         .to_lowercase();
 
     match ext.as_str() {
-        "zip" | "rar" | "7z" | "tar" | "gz" | "bz2" | "xz" | "iso" | "tgz" => "Compressed".to_string(),
+        "zip" | "rar" | "7z" | "tar" | "gz" | "bz2" | "xz" | "iso" | "tgz" => {
+            "Compressed".to_string()
+        }
         "exe" | "msi" | "dmg" | "pkg" | "deb" | "rpm" | "apk" => "Programs".to_string(),
         "mp4" | "mkv" | "avi" | "mov" | "webm" | "flv" | "wmv" => "Video".to_string(),
-        "pdf" | "docx" | "doc" | "xlsx" | "xls" | "pptx" | "txt" | "epub" => "Documents".to_string(),
+        "pdf" | "docx" | "doc" | "xlsx" | "xls" | "pptx" | "txt" | "epub" => {
+            "Documents".to_string()
+        }
         "mp3" | "flac" | "wav" | "aac" | "ogg" | "m4a" => "Music".to_string(),
         _ => "Other".to_string(),
     }

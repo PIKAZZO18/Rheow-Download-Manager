@@ -26,7 +26,8 @@ impl TokenBucketLimiter {
 
     pub fn set_rate(&self, bytes_per_second: i64) {
         let mut state = self.state.lock().unwrap();
-        self.bytes_per_second.store(bytes_per_second, Ordering::Relaxed);
+        self.bytes_per_second
+            .store(bytes_per_second, Ordering::Relaxed);
         let now = Instant::now();
         state.last_refill = now;
         if bytes_per_second <= 0 {

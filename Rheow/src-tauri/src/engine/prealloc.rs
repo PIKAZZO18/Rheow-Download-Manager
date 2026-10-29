@@ -119,11 +119,7 @@ pub fn truncate_and_preallocate(path: &Path, total_size: i64) -> std::io::Result
 
 /// Prepares a brand-new destination file. When preallocation is disabled the
 /// file is created empty and grows as segments write to their offsets.
-pub fn create_destination(
-    path: &Path,
-    total_size: i64,
-    preallocate: bool,
-) -> std::io::Result<()> {
+pub fn create_destination(path: &Path, total_size: i64, preallocate: bool) -> std::io::Result<()> {
     if preallocate {
         truncate_and_preallocate(path, total_size)
     } else {
@@ -140,11 +136,7 @@ pub fn create_destination(
 }
 
 /// Opens an existing destination file for a resumed download.
-pub fn ensure_destination(
-    path: &Path,
-    total_size: i64,
-    preallocate: bool,
-) -> std::io::Result<()> {
+pub fn ensure_destination(path: &Path, total_size: i64, preallocate: bool) -> std::io::Result<()> {
     if preallocate {
         preallocate_file(path, total_size)
     } else {
@@ -193,10 +185,7 @@ mod tests {
         assert!(relative_path.parent().unwrap().is_dir());
 
         // Absolute override ignores the base folder.
-        overrides.insert(
-            "Music".to_string(),
-            absolute.to_string_lossy().to_string(),
-        );
+        overrides.insert("Music".to_string(), absolute.to_string_lossy().to_string());
         let absolute_path =
             resolve_category_destination(&base, "Music", "song.mp3", &overrides).unwrap();
         assert_eq!(absolute_path, absolute.join("song.mp3"));
@@ -227,8 +216,7 @@ mod tests {
         assert_eq!(path_slash, base.join("General").join("evil.sh"));
         assert!(path_slash.starts_with(&base.join("General")));
 
-        let path_empty =
-            resolve_category_destination(&base, "General", "..", &overrides).unwrap();
+        let path_empty = resolve_category_destination(&base, "General", "..", &overrides).unwrap();
         assert_eq!(path_empty, base.join("General").join("download.bin"));
 
         let _ = fs::remove_dir_all(&base);

@@ -100,9 +100,7 @@ pub async fn run_segment_worker(
                 }
 
                 // 250ms, 500ms, 1s, 2s, then 4s between attempts.
-                let delay_ms = 250u64
-                    .saturating_mul(1u64 << attempt.min(4))
-                    .min(4000);
+                let delay_ms = 250u64.saturating_mul(1u64 << attempt.min(4)).min(4000);
                 tokio::time::sleep(Duration::from_millis(delay_ms)).await;
             }
         }
@@ -156,17 +154,9 @@ async fn run_segment_once(
         }
     }
 
-    let resp = client
-        .get(url)
-        .headers(headers)
-        .send()
-        .await
-        .map_err(|e| {
-            WorkerFailure::retryable(format!(
-                "Segment {} request failed: {}",
-                config.index, e
-            ))
-        })?;
+    let resp = client.get(url).headers(headers).send().await.map_err(|e| {
+        WorkerFailure::retryable(format!("Segment {} request failed: {}", config.index, e))
+    })?;
 
     let expected_len = config.end_offset.saturating_sub(current) + 1;
 
@@ -202,14 +192,16 @@ async fn run_segment_once(
     } else {
         let status = resp.status();
         let message = format!("Segment {} returned HTTP {}", config.index, status);
-        return Err(if status.is_server_error()
-            || status == reqwest::StatusCode::REQUEST_TIMEOUT
-            || status == reqwest::StatusCode::TOO_MANY_REQUESTS
-        {
-            WorkerFailure::retryable(message)
-        } else {
-            WorkerFailure::fatal(message)
-        });
+        return Err(
+            if status.is_server_error()
+                || status == reqwest::StatusCode::REQUEST_TIMEOUT
+                || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            {
+                WorkerFailure::retryable(message)
+            } else {
+                WorkerFailure::fatal(message)
+            },
+        );
     }
 
     let mut stream = resp.bytes_stream();
@@ -234,10 +226,7 @@ async fn run_segment_once(
         }
 
         let chunk = chunk_result.map_err(|e| {
-            WorkerFailure::retryable(format!(
-                "Stream error in segment {}: {}",
-                config.index, e
-            ))
+            WorkerFailure::retryable(format!("Stream error in segment {}: {}", config.index, e))
         })?;
         if chunk.is_empty() {
             continue;
@@ -252,7 +241,8 @@ async fn run_segment_once(
 
         // Speed throttling
         if let Some(gl) = global_limiter {
-            gl.consume_with_cancel(to_write_len, Some(cancel_flag)).await;
+            gl.consume_with_cancel(to_write_len, Some(cancel_flag))
+                .await;
         }
         if let Some(l) = limiter {
             l.consume_with_cancel(to_write_len, Some(cancel_flag)).await;
@@ -287,10 +277,7 @@ async fn run_segment_once(
     }
 
     file.flush().map_err(|e| {
-        WorkerFailure::retryable(format!(
-            "Failed to flush segment {}: {}",
-            config.index, e
-        ))
+        WorkerFailure::retryable(format!("Failed to flush segment {}: {}", config.index, e))
     })?;
 
     Ok(())

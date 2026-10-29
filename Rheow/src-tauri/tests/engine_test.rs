@@ -10,12 +10,20 @@ use tokio::sync::mpsc;
 #[tokio::test]
 async fn test_probe_ovh_file() {
     let url = "https://proof.ovh.net/files/10Mb.dat";
-    let res = probe_url(url, None, None).await.expect("Failed to probe URL");
+    let res = probe_url(url, None, None)
+        .await
+        .expect("Failed to probe URL");
 
     assert_eq!(res.filename, "10Mb.dat");
     assert_eq!(res.total_size, 10485760);
-    assert!(res.supports_range, "OVH test server must support HTTP Range");
-    println!("Probe successfully resolved OVH file: {} bytes, Range={}", res.total_size, res.supports_range);
+    assert!(
+        res.supports_range,
+        "OVH test server must support HTTP Range"
+    );
+    println!(
+        "Probe successfully resolved OVH file: {} bytes, Range={}",
+        res.total_size, res.supports_range
+    );
 }
 
 #[test]
@@ -26,15 +34,20 @@ fn test_smart_category_routing_and_collision() {
 
     // 1. First file in Programs category
     let overrides = HashMap::new();
-    let path1 = resolve_category_destination(&temp_dir, "Programs", "setup.exe", &overrides).unwrap();
+    let path1 =
+        resolve_category_destination(&temp_dir, "Programs", "setup.exe", &overrides).unwrap();
     assert_eq!(path1, temp_dir.join("Programs").join("setup.exe"));
-    assert!(temp_dir.join("Programs").exists(), "Programs subfolder must be auto-created");
+    assert!(
+        temp_dir.join("Programs").exists(),
+        "Programs subfolder must be auto-created"
+    );
 
     // Create the dummy file to trigger collision
     fs::write(&path1, b"dummy").unwrap();
 
     // 2. Second file with same name -> collision resolution
-    let path2 = resolve_category_destination(&temp_dir, "Programs", "setup.exe", &overrides).unwrap();
+    let path2 =
+        resolve_category_destination(&temp_dir, "Programs", "setup.exe", &overrides).unwrap();
     assert_eq!(path2, temp_dir.join("Programs").join("setup (1).exe"));
 
     // Cleanup
@@ -58,7 +71,10 @@ fn test_preallocate() {
 async fn test_multi_segment_download() {
     let url = "https://proof.ovh.net/files/10Mb.dat";
     let total_size: u64 = 10485760;
-    let temp_file = std::env::temp_dir().join(format!("rheow_ovh_download_test_{}.dat", uuid::Uuid::new_v4()));
+    let temp_file = std::env::temp_dir().join(format!(
+        "rheow_ovh_download_test_{}.dat",
+        uuid::Uuid::new_v4()
+    ));
 
     // Pre-allocate
     preallocate_file(&temp_file, total_size as i64).unwrap();
@@ -96,9 +112,7 @@ async fn test_multi_segment_download() {
         let c_path = temp_file.clone();
 
         // Drain progress updates
-        tokio::spawn(async move {
-            while let Some(_) = rx.recv().await {}
-        });
+        tokio::spawn(async move { while let Some(_) = rx.recv().await {} });
 
         let handle = tokio::spawn(async move {
             run_segment_worker(
@@ -115,7 +129,8 @@ async fn test_multi_segment_download() {
                 None,
                 None,
                 tx,
-            ).await
+            )
+            .await
         });
 
         handles.push(handle);
@@ -127,7 +142,11 @@ async fn test_multi_segment_download() {
     }
 
     let meta = fs::metadata(&temp_file).unwrap();
-    assert_eq!(meta.len(), total_size, "Downloaded file must match exact byte size");
+    assert_eq!(
+        meta.len(),
+        total_size,
+        "Downloaded file must match exact byte size"
+    );
 
     let _ = fs::remove_file(&temp_file);
     println!("Multi-segment download test PASSED!");
@@ -157,10 +176,8 @@ async fn test_resume_segment_is_byte_exact() {
     let cut = total / 2;
     assert!(cut > 0 && cut < total);
 
-    let temp_file = std::env::temp_dir().join(format!(
-        "rheow_resume_test_{}.dat",
-        uuid::Uuid::new_v4()
-    ));
+    let temp_file =
+        std::env::temp_dir().join(format!("rheow_resume_test_{}.dat", uuid::Uuid::new_v4()));
 
     // Simulate a download that already wrote the first half.
     fs::write(&temp_file, &full[..cut]).unwrap();
@@ -220,8 +237,15 @@ async fn test_token_bucket_limiter() {
     limiter.consume(1024 * 50).await;
 
     let elapsed = start.elapsed();
-    assert!(elapsed.as_millis() >= 400, "Limiter must enforce throttling delay, elapsed: {:?}", elapsed);
-    println!("Token bucket limiter test PASSED! (Throttled for {:?})", elapsed);
+    assert!(
+        elapsed.as_millis() >= 400,
+        "Limiter must enforce throttling delay, elapsed: {:?}",
+        elapsed
+    );
+    println!(
+        "Token bucket limiter test PASSED! (Throttled for {:?})",
+        elapsed
+    );
 }
 
 #[tokio::test]
@@ -284,7 +308,10 @@ async fn test_token_bucket_dynamic_rate_change() {
 fn test_db_update_speed_limit() {
     use rheow_lib::db::{Database, DownloadRecord};
 
-    let temp_db = std::env::temp_dir().join(format!("rheow_speed_limit_test_{}.db", uuid::Uuid::new_v4()));
+    let temp_db = std::env::temp_dir().join(format!(
+        "rheow_speed_limit_test_{}.db",
+        uuid::Uuid::new_v4()
+    ));
     let db = Database::new(&temp_db).expect("Must initialize database");
 
     let rec = DownloadRecord {
@@ -312,13 +339,31 @@ fn test_db_update_speed_limit() {
     };
 
     db.insert_download(&rec).unwrap();
-    assert_eq!(db.get_download_by_id("limit-test-1").unwrap().unwrap().speed_limit_kb, None);
+    assert_eq!(
+        db.get_download_by_id("limit-test-1")
+            .unwrap()
+            .unwrap()
+            .speed_limit_kb,
+        None
+    );
 
     db.update_speed_limit("limit-test-1", Some(250)).unwrap();
-    assert_eq!(db.get_download_by_id("limit-test-1").unwrap().unwrap().speed_limit_kb, Some(250));
+    assert_eq!(
+        db.get_download_by_id("limit-test-1")
+            .unwrap()
+            .unwrap()
+            .speed_limit_kb,
+        Some(250)
+    );
 
     db.update_speed_limit("limit-test-1", None).unwrap();
-    assert_eq!(db.get_download_by_id("limit-test-1").unwrap().unwrap().speed_limit_kb, None);
+    assert_eq!(
+        db.get_download_by_id("limit-test-1")
+            .unwrap()
+            .unwrap()
+            .speed_limit_kb,
+        None
+    );
 
     let _ = std::fs::remove_file(temp_db);
 }
@@ -327,7 +372,10 @@ fn test_db_update_speed_limit() {
 fn test_get_partitions() {
     let parts = rheow_lib::get_system_partitions();
     println!("Detected partitions: {:?}", parts);
-    assert!(!parts.is_empty(), "Must detect at least 1 partition on system");
+    assert!(
+        !parts.is_empty(),
+        "Must detect at least 1 partition on system"
+    );
     for p in &parts {
         assert!(p.total_bytes > 0);
         assert!(p.usage_percentage >= 0.0 && p.usage_percentage <= 100.0);
@@ -453,10 +501,7 @@ fn test_sqlite_queue_and_lifecycle() {
     assert!(db.get_download_by_id("q-3").unwrap().is_none());
 
     // 8. Test Segment Checkpoints
-    let segments = vec![
-        (0, 0, 499, 250, false),
-        (1, 500, 999, 500, false),
-    ];
+    let segments = vec![(0, 0, 499, 250, false), (1, 500, 999, 500, false)];
     db.save_segments("q-1", &segments).unwrap();
     let saved_segs = db.get_segments("q-1").unwrap();
     assert_eq!(saved_segs.len(), 2);
@@ -514,11 +559,16 @@ fn test_fresh_database_is_empty_and_legacy_demo_rows_are_purged() {
     ))
     .unwrap();
     // Same legacy id but a real URL: must be preserved.
-    db.insert_download(&make_record("row-4", "https://example.com/real-download.zip"))
-        .unwrap();
+    db.insert_download(&make_record(
+        "row-4",
+        "https://example.com/real-download.zip",
+    ))
+    .unwrap();
 
-    db.save_segments("row-1", &[(0, 0, 499, 100, false)]).unwrap();
-    db.save_segments("row-4", &[(0, 0, 499, 100, false)]).unwrap();
+    db.save_segments("row-1", &[(0, 0, 499, 100, false)])
+        .unwrap();
+    db.save_segments("row-4", &[(0, 0, 499, 100, false)])
+        .unwrap();
 
     let removed = db.purge_legacy_demo_rows().unwrap();
     assert_eq!(removed, 1, "only the exact demo row must be removed");
@@ -526,8 +576,15 @@ fn test_fresh_database_is_empty_and_legacy_demo_rows_are_purged() {
     let remaining = db.get_all_downloads().unwrap();
     assert_eq!(remaining.len(), 1);
     assert_eq!(remaining[0].id, "row-4");
-    assert!(db.get_segments("row-1").unwrap().is_empty(), "demo segments must be removed");
-    assert_eq!(db.get_segments("row-4").unwrap().len(), 1, "real segments must be kept");
+    assert!(
+        db.get_segments("row-1").unwrap().is_empty(),
+        "demo segments must be removed"
+    );
+    assert_eq!(
+        db.get_segments("row-4").unwrap().len(),
+        1,
+        "real segments must be kept"
+    );
 
     let _ = std::fs::remove_file(&temp_db);
 }
@@ -537,10 +594,8 @@ fn test_engine_settings_persistence_and_clamping() {
     use rheow_lib::db::Database;
     use rheow_lib::settings::EngineSettings;
 
-    let temp_db = std::env::temp_dir().join(format!(
-        "rheow_settings_test_{}.db",
-        uuid::Uuid::new_v4()
-    ));
+    let temp_db =
+        std::env::temp_dir().join(format!("rheow_settings_test_{}.db", uuid::Uuid::new_v4()));
     let db = Database::new(&temp_db).expect("Must initialize database");
 
     // Nothing saved yet -> frontend knows it should migrate localStorage.
@@ -559,12 +614,24 @@ fn test_engine_settings_persistence_and_clamping() {
 
     let loaded = db.get_engine_settings().expect("settings must roundtrip");
     assert_eq!(loaded.max_connections, 32, "connections must be clamped");
-    assert_eq!(loaded.connection_timeout_seconds, 5, "timeout must be clamped");
+    assert_eq!(
+        loaded.connection_timeout_seconds, 5,
+        "timeout must be clamped"
+    );
     assert_eq!(loaded.max_retries, 50, "retries must be clamped");
     assert_eq!(loaded.default_download_path, "D:\\Rheow");
-    assert!(loaded.autostart_enabled, "autostart preference must roundtrip");
-    assert!(!loaded.close_to_tray, "close-to-tray preference must roundtrip");
-    assert!(loaded.start_minimized, "start-minimized preference must roundtrip");
+    assert!(
+        loaded.autostart_enabled,
+        "autostart preference must roundtrip"
+    );
+    assert!(
+        !loaded.close_to_tray,
+        "close-to-tray preference must roundtrip"
+    );
+    assert!(
+        loaded.start_minimized,
+        "start-minimized preference must roundtrip"
+    );
 
     // Saving again must update the existing row instead of failing.
     let mut updated = loaded.clone();
@@ -583,7 +650,11 @@ fn test_destination_without_preallocation() {
     let path = dir.join("file.bin");
 
     create_destination(&path, 1024 * 1024, false).unwrap();
-    assert_eq!(fs::metadata(&path).unwrap().len(), 0, "file must start empty");
+    assert_eq!(
+        fs::metadata(&path).unwrap().len(),
+        0,
+        "file must start empty"
+    );
     assert!(dir.exists(), "parent folder must be created");
 
     create_destination(&path, 1024 * 1024, true).unwrap();
@@ -600,7 +671,8 @@ fn test_destination_without_preallocation() {
 fn test_redownload_and_file_deletion_lifecycle() {
     use rheow_lib::db::{Database, DownloadRecord};
 
-    let temp_dir = std::env::temp_dir().join(format!("rheow_redownload_test_{}", uuid::Uuid::new_v4()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("rheow_redownload_test_{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(&temp_dir).unwrap();
     let temp_db = temp_dir.join("test.db");
     let target_file = temp_dir.join("sample.zip");
@@ -634,7 +706,8 @@ fn test_redownload_and_file_deletion_lifecycle() {
         ..Default::default()
     };
     db.insert_download(&record).unwrap();
-    db.save_segments("dl-redownload-1", &[(0, 0, 999, 999, true)]).unwrap();
+    db.save_segments("dl-redownload-1", &[(0, 0, 999, 999, true)])
+        .unwrap();
 
     // 1. Redownload resets DB state and clears segments
     db.reset_for_redownload("dl-redownload-1").unwrap();
@@ -709,11 +782,17 @@ fn test_notification_payload_action_performed_deserialization() {
         }
     });
 
-    let performed: ActionPerformed = serde_json::from_value(json_payload).expect("Must deserialize ActionPerformed");
+    let performed: ActionPerformed =
+        serde_json::from_value(json_payload).expect("Must deserialize ActionPerformed");
     assert_eq!(performed.action_id(), "open_file");
-    let notif = performed.notification().expect("Must have active notification");
+    let notif = performed
+        .notification()
+        .expect("Must have active notification");
     assert_eq!(
-        notif.extra().get("destination_path").and_then(|v| v.as_str()),
+        notif
+            .extra()
+            .get("destination_path")
+            .and_then(|v| v.as_str()),
         Some("C:\\Downloads\\test.zip")
     );
     assert_eq!(
@@ -726,7 +805,10 @@ fn test_notification_payload_action_performed_deserialization() {
 fn test_open_folder_with_spaces_in_path() {
     use rheow_lib::system::{resolve_explorer_action, ExplorerAction};
 
-    let temp_dir = std::env::temp_dir().join(format!("rheow test dir with spaces {}", uuid::Uuid::new_v4()));
+    let temp_dir = std::env::temp_dir().join(format!(
+        "rheow test dir with spaces {}",
+        uuid::Uuid::new_v4()
+    ));
     fs::create_dir_all(&temp_dir).unwrap();
     let sample_file = temp_dir.join("sample download with spaces.mkv");
     fs::write(&sample_file, b"test video data").unwrap();
@@ -820,7 +902,10 @@ fn test_delete_download_with_and_without_physical_file() {
     // Case 1: Delete without deleting physical file
     db.delete_download("dl-keep-file").unwrap();
     assert!(db.get_download_by_id("dl-keep-file").unwrap().is_none());
-    assert!(target_file1.exists(), "target_file1 must remain on disk when delete_file is false");
+    assert!(
+        target_file1.exists(),
+        "target_file1 must remain on disk when delete_file is false"
+    );
 
     // Case 2: Delete with physical file removal
     if target_file2.exists() {
@@ -828,8 +913,10 @@ fn test_delete_download_with_and_without_physical_file() {
     }
     db.delete_download("dl-delete-file").unwrap();
     assert!(db.get_download_by_id("dl-delete-file").unwrap().is_none());
-    assert!(!target_file2.exists(), "target_file2 must be removed from disk");
+    assert!(
+        !target_file2.exists(),
+        "target_file2 must be removed from disk"
+    );
 
     let _ = fs::remove_dir_all(&temp_dir);
 }
-

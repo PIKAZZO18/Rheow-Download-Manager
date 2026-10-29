@@ -66,12 +66,7 @@ pub fn get_system_partitions() -> Vec<PartitionInfo> {
             let mut free_avail: u64 = 0;
             let mut total: u64 = 0;
             let mut free_total: u64 = 0;
-            if GetDiskFreeSpaceExW(
-                wide.as_ptr(),
-                &mut free_avail,
-                &mut total,
-                &mut free_total,
-            ) == 0
+            if GetDiskFreeSpaceExW(wide.as_ptr(), &mut free_avail, &mut total, &mut free_total) == 0
                 || total == 0
             {
                 continue;
@@ -147,18 +142,16 @@ fn volume_label(root: *const u16) -> String {
 
 #[cfg(not(windows))]
 pub fn get_system_partitions() -> Vec<PartitionInfo> {
-    vec![
-        PartitionInfo {
-            letter: "C:".to_string(),
-            name: "Local Disk (C:)".to_string(),
-            total_bytes: 1_000_000_000_000,
-            free_bytes: 348_000_000_000,
-            used_bytes: 652_000_000_000,
-            free_display: "348 GB free".to_string(),
-            used_display: "652 GB / 1.0 TB used".to_string(),
-            usage_percentage: 65.2,
-        }
-    ]
+    vec![PartitionInfo {
+        letter: "C:".to_string(),
+        name: "Local Disk (C:)".to_string(),
+        total_bytes: 1_000_000_000_000,
+        free_bytes: 348_000_000_000,
+        used_bytes: 652_000_000_000,
+        free_display: "348 GB free".to_string(),
+        used_display: "652 GB / 1.0 TB used".to_string(),
+        usage_percentage: 65.2,
+    }]
 }
 
 fn format_disk_size(bytes: u64) -> String {
