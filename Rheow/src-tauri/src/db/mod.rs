@@ -172,6 +172,26 @@ impl Database {
                 "row-7",
                 "https://github.com/EpicGames/UnrealEngine/UnrealEngine_5.4_Linux_Source.zip",
             ),
+            (
+                "d76aeaa2-d641-4a50-b7f4-c9babe48a7cc",
+                "https://www.sqlite.org/2024/sqlite-tools-win-x64-3460100.zip",
+            ),
+            (
+                "c2664de6-7de0-4992-b534-a45946f7111e",
+                "https://www.python.org/ftp/python/3.12.0/python-3.12.0-embed-amd64.zip",
+            ),
+            (
+                "2f61d2c1-c502-4b98-a832-693c606c97dd",
+                "https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi",
+            ),
+            (
+                "991e7c35-2315-4eec-bced-e2f48cae1b70",
+                "https://ftp.mozilla.org/pub/firefox/releases/130.0/win64/en-US/Firefox%20Setup%20130.0.exe",
+            ),
+            (
+                "7a157f16-3b3c-41e9-ba11-721b9fa6f27f",
+                "https://dl.google.com/go/go1.23.2.windows-amd64.zip",
+            ),
         ];
 
         let conn = self.conn.lock().unwrap();
