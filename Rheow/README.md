@@ -6,11 +6,11 @@ Rheow focuses on core performance strengths: multi-segment HTTP Range chunking, 
 
 ## 📸 Screenshots
 
-![Rheow dashboard with the category sidebar, status filters, and per-drive storage meters](public/Rheow%20Showcase01.png)
+![Rheow dashboard with the category sidebar, status filters, and per-drive storage meters](docs/screenshots/rheow-showcase-01.png)
 
 *Dashboard overview: category sidebar, status filter pills, and live per-drive storage meters.*
 
-![Rheow downloading five files at once with multi-segment progress bars and per-row controls](public/Rheow%20Showcase02.png)
+![Rheow downloading five files at once with multi-segment progress bars and per-row controls](docs/screenshots/rheow-showcase-02.png)
 
 *Active downloads: multi-segment progress, per-file speed and ETA, inline pause and delete, plus the Resume Supported badge.*
 
@@ -46,6 +46,8 @@ Rheow/
 │   ├── popup.html                 # Sleek status & quick add popup
 │   ├── popup.js
 │   └── icons/                     # 16x16, 48x48, 128x128 PNG icons
+├── docs/
+│   └── screenshots/               # README screenshots (not bundled)
 ├── public/                        # Frontend & brand assets
 ├── scripts/                       # Bridge & extension E2E tests
 ├── src/                           # React 19 Frontend
