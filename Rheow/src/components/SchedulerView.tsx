@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Clock,
   Power,
   Layers,
   Play,
   Pause,
-  Save,
   Check,
   Plus,
   Trash2,
@@ -25,7 +24,7 @@ interface SchedulerViewProps {
   settings: SchedulerSettings;
   queueDetails: QueueDetails;
   queuedDownloads: DownloadItem[];
-  onSaveSettings: (updated: SchedulerSettings) => Promise<void>;
+  onSaveSettings: (updated: SchedulerSettings, isMasterToggle?: boolean) => Promise<void>;
   onStartQueue: () => void;
   onPauseQueue: () => void;
   onResumeDownload: (id: string) => void;
@@ -60,6 +59,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
   const [enableStopTime, setEnableStopTime] = useState<boolean>(!!settings.stopTime);
   const [isSaving, setIsSaving] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState(false);
+  const savedTimerRef = useRef<number | null>(null);
 
   // Sync when prop changes
   useEffect(() => {
@@ -67,17 +67,110 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
     setEnableStopTime(!!settings.stopTime);
   }, [settings]);
 
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+    };
+  }, []);
+
+  const persist = async (nextSettings: SchedulerSettings, isMasterToggle = false) => {
+    setIsSaving(true);
+    try {
+      await onSaveSettings(nextSettings, isMasterToggle);
+      setSavedFeedback(true);
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = window.setTimeout(() => setSavedFeedback(false), 2000);
+    } catch (err) {
+      console.error('Failed to auto-save scheduler settings:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleEnabled = (enabled: boolean) => {
+    const updated = {
+      ...formState,
+      enabled,
+      stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, true);
+  };
+
+  const handleSetDays = (days: number[]) => {
+    const updated = {
+      ...formState,
+      days,
+      stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
+  };
+
   const toggleDay = (dayId: number) => {
-    setFormState((prev) => {
-      const currentDays = prev.days.length === 0 ? [1, 2, 3, 4, 5, 6, 7] : prev.days;
-      const exists = currentDays.includes(dayId);
-      let newDays = exists ? currentDays.filter((d) => d !== dayId) : [...currentDays, dayId];
-      newDays.sort((a, b) => a - b);
-      if (newDays.length === 7) {
-        newDays = [];
-      }
-      return { ...prev, days: newDays };
-    });
+    const currentDays = formState.days.length === 0 ? [1, 2, 3, 4, 5, 6, 7] : formState.days;
+    const exists = currentDays.includes(dayId);
+    let newDays = exists ? currentDays.filter((d) => d !== dayId) : [...currentDays, dayId];
+    newDays.sort((a, b) => a - b);
+    if (newDays.length === 7) {
+      newDays = [];
+    }
+    const updated = {
+      ...formState,
+      days: newDays,
+      stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
+  };
+
+  const handleSetStartTime = (startTime: string) => {
+    const updated = {
+      ...formState,
+      startTime,
+      stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
+  };
+
+  const handleToggleStopTime = (enabled: boolean) => {
+    setEnableStopTime(enabled);
+    const updated = {
+      ...formState,
+      stopTime: enabled && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
+  };
+
+  const handleSetStopTime = (stopTime: string) => {
+    const updated = {
+      ...formState,
+      stopTime: enableStopTime ? stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
+  };
+
+  const handleSetConcurrency = (maxConcurrentQueue: number) => {
+    const updated = {
+      ...formState,
+      maxConcurrentQueue,
+      stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
+  };
+
+  const handleSetActionOnFinish = (actionOnFinish: SchedulerActionOnFinish) => {
+    const updated = {
+      ...formState,
+      actionOnFinish,
+      stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
+    };
+    setFormState(updated);
+    persist(updated, false);
   };
 
   const isDayActive = (dayId: number) => {
@@ -90,28 +183,13 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
   const isWeekends =
     formState.days.length === 2 && [6, 7].every((d) => formState.days.includes(d));
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const payload: SchedulerSettings = {
-        ...formState,
-        stopTime: enableStopTime && formState.stopTime ? formState.stopTime : null,
-      };
-      await onSaveSettings(payload);
-      setSavedFeedback(true);
-      setTimeout(() => setSavedFeedback(false), 2000);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col gap-3.5 overflow-y-auto pr-1 select-none">
       {/* Top Banner / Master Switch */}
-      <div className="bg-[#fafafa] border border-[#e5e5e5] rounded-xl px-4 py-3 sm:px-5 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
-        <div className="flex items-center gap-3">
+      <div className="bg-[#fafafa] border border-[#e5e5e5] rounded-xl px-4 py-3 sm:px-5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+            className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
               formState.enabled
                 ? 'bg-[#16a34a] text-white shadow-xs'
                 : 'bg-[#e5e5e5] text-[#737373]'
@@ -119,53 +197,57 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
           >
             <Clock className="w-4.5 h-4.5 stroke-[2.2]" />
           </div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm sm:text-base font-bold text-[#171717] tracking-tight">
-              Download Scheduler
-            </h2>
-            {formState.enabled && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#dcfce7] text-[#15803d] border border-[#86efac]">
-                ACTIVE
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-[#171717] tracking-tight">
+                Download Scheduler
+              </h2>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                  formState.enabled
+                    ? 'bg-[#dcfce7] text-[#15803d] border-[#86efac]'
+                    : 'bg-[#f5f5f5] text-[#737373] border-[#e5e5e5]'
+                }`}
+              >
+                {formState.enabled ? 'ACTIVE' : 'OFF'}
               </span>
-            )}
+            </div>
+            <p className="text-[11px] text-[#737373] mt-0.5 truncate">
+              {formState.enabled
+                ? `Runs queue automatically at ${formState.startTime}${
+                    enableStopTime && formState.stopTime ? ` – ${formState.stopTime}` : ''
+                  } on ${isAll ? 'all days' : isWeekdays ? 'weekdays' : isWeekends ? 'weekends' : `${formState.days.length} selected days`}`
+                : 'Automate queue execution at scheduled hours and days of the week'}
+            </p>
           </div>
         </div>
 
-        {/* Master Toggle & Quick Save */}
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <span className="text-xs font-medium text-[#525252]">Enable</span>
+        {/* Master Switch & Auto-save Status */}
+        <div className="flex items-center gap-3 shrink-0 ml-auto">
+          {isSaving && (
+            <span className="text-[11px] font-medium text-[#737373] animate-pulse">
+              Saving…
+            </span>
+          )}
+          {!isSaving && savedFeedback && (
+            <span className="text-[11px] font-medium text-[#16a34a] flex items-center gap-1 transition-opacity">
+              <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+              Saved
+            </span>
+          )}
+
+          <label className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-[#e5e5e5] bg-white hover:bg-[#f5f5f5] transition-colors cursor-pointer select-none shadow-2xs">
+            <span className="text-xs font-semibold text-[#171717]">
+              {formState.enabled ? 'Enabled' : 'Disabled'}
+            </span>
             <input
               type="checkbox"
               checked={formState.enabled}
-              onChange={(e) => setFormState((prev) => ({ ...prev, enabled: e.target.checked }))}
+              onChange={(e) => handleToggleEnabled(e.target.checked)}
               className="sr-only peer"
             />
-            <div className="w-10 h-5.5 bg-[#d4d4d4] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-[#16a34a] relative"></div>
+            <div className="w-9 h-5 bg-[#d4d4d4] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#16a34a] relative"></div>
           </label>
-
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className={`h-8 px-3.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs ${
-              savedFeedback
-                ? 'bg-[#16a34a] text-white'
-                : 'bg-[#171717] hover:bg-black text-white active:scale-95'
-            }`}
-          >
-            {savedFeedback ? (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                <span>Saved!</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
 
@@ -182,7 +264,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
               <div className="flex items-center gap-1 bg-[#f5f5f5] p-0.5 rounded-md border border-[#e5e5e5]">
                 <button
                   type="button"
-                  onClick={() => setFormState((prev) => ({ ...prev, days: [] }))}
+                  onClick={() => handleSetDays([])}
                   className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
                     isAll ? 'bg-white text-[#171717] shadow-2xs' : 'text-[#737373] hover:text-[#171717]'
                   }`}
@@ -191,7 +273,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormState((prev) => ({ ...prev, days: [1, 2, 3, 4, 5] }))}
+                  onClick={() => handleSetDays([1, 2, 3, 4, 5])}
                   className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
                     isWeekdays ? 'bg-white text-[#171717] shadow-2xs' : 'text-[#737373] hover:text-[#171717]'
                   }`}
@@ -200,7 +282,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setFormState((prev) => ({ ...prev, days: [6, 7] }))}
+                  onClick={() => handleSetDays([6, 7])}
                   className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
                     isWeekends ? 'bg-white text-[#171717] shadow-2xs' : 'text-[#737373] hover:text-[#171717]'
                   }`}
@@ -218,7 +300,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                 </span>
                 <TimePicker
                   value={formState.startTime}
-                  onChange={(val) => setFormState((prev) => ({ ...prev, startTime: val }))}
+                  onChange={(val) => handleSetStartTime(val)}
                   align="left"
                 />
               </div>
@@ -230,7 +312,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                     <input
                       type="checkbox"
                       checked={enableStopTime}
-                      onChange={(e) => setEnableStopTime(e.target.checked)}
+                      onChange={(e) => handleToggleStopTime(e.target.checked)}
                       className="w-3.5 h-3.5 text-[#2563eb] rounded border-[#d4d4d4] accent-[#2563eb]"
                     />
                     <span className="text-[10px] font-medium text-[#525252]">Enable</span>
@@ -239,7 +321,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                 <TimePicker
                   value={formState.stopTime || '06:00'}
                   disabled={!enableStopTime}
-                  onChange={(val) => setFormState((prev) => ({ ...prev, stopTime: val }))}
+                  onChange={(val) => handleSetStopTime(val)}
                   align="right"
                 />
               </div>
@@ -308,10 +390,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                   <button
                     type="button"
                     onClick={() =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        maxConcurrentQueue: Math.max(1, prev.maxConcurrentQueue - 1),
-                      }))
+                      handleSetConcurrency(Math.max(1, formState.maxConcurrentQueue - 1))
                     }
                     className="w-7 h-7 flex items-center justify-center text-xs hover:bg-[#f5f5f5] text-[#171717] font-bold cursor-pointer transition-colors"
                   >
@@ -323,10 +402,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                   <button
                     type="button"
                     onClick={() =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        maxConcurrentQueue: Math.min(10, prev.maxConcurrentQueue + 1),
-                      }))
+                      handleSetConcurrency(Math.min(10, formState.maxConcurrentQueue + 1))
                     }
                     className="w-7 h-7 flex items-center justify-center text-xs hover:bg-[#f5f5f5] text-[#171717] font-bold cursor-pointer transition-colors"
                   >
@@ -375,10 +451,7 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
                       key={act.id}
                       type="button"
                       onClick={() =>
-                        setFormState((prev) => ({
-                          ...prev,
-                          actionOnFinish: act.id as SchedulerActionOnFinish,
-                        }))
+                        handleSetActionOnFinish(act.id as SchedulerActionOnFinish)
                       }
                       className={`h-8.5 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer flex items-center gap-2 ${
                         isSelected

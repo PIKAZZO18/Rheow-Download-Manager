@@ -1152,12 +1152,21 @@ export function App() {
     }
   };
 
-  const handleSaveSchedulerSettings = async (updated: SchedulerSettings) => {
+  const handleSaveSchedulerSettings = async (
+    updated: SchedulerSettings,
+    isMasterToggle = false
+  ) => {
     try {
       await invoke('save_scheduler_settings', { settings: updated });
       setSchedulerSettings(updated);
       setQueueDetails((prev) => ({ ...prev, maxConcurrent: updated.maxConcurrentQueue }));
-      setToastMessage('Scheduler settings saved successfully');
+      if (isMasterToggle) {
+        setToastMessage(
+          updated.enabled
+            ? 'Download scheduler enabled'
+            : 'Download scheduler disabled'
+        );
+      }
     } catch (err) {
       console.error('Failed to save scheduler settings:', err);
       setToastMessage('Failed to save scheduler settings');
