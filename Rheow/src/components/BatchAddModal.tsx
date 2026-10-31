@@ -420,10 +420,6 @@ export const BatchAddModal: React.FC<BatchAddModalProps> = ({
                 {detectedUrls.length} {detectedUrls.length === 1 ? 'URL' : 'URLs'} found
               </div>
             </div>
-
-            <div className="text-[11px] text-[#737373] bg-[#fafafa] border border-[#e5e5e5] rounded-lg p-3 leading-normal">
-              <strong>Tip:</strong> You can paste an entire block of text containing URLs. Rheow will automatically extract, validate, and deduplicate all download links.
-            </div>
           </div>
         ) : (
           <div className="flex-1 min-h-0 flex flex-col p-5 gap-3.5 overflow-hidden">

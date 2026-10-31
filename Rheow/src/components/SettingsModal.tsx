@@ -1172,10 +1172,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         {/* Modal Bottom Actions */}
         <div className="flex items-center justify-between px-4.5 py-3 border-t border-[#f0f0f0] bg-white shrink-0">
           {activeTab === 'updates' ? (
-            <>
-              <span className="text-[11px] text-[#737373]">
-                Update preferences save automatically.
-              </span>
+            <div className="flex items-center justify-end w-full">
               <button
                 type="button"
                 onClick={onClose}
@@ -1183,7 +1180,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               >
                 Done
               </button>
-            </>
+            </div>
           ) : (
             <>
               <button
