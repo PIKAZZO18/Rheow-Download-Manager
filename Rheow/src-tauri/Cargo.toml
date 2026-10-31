@@ -1,6 +1,6 @@
 [package]
 name = "rheow"
-version = "1.1.0"
+version = "1.1.1"
 description = "Rheow Modern Download Manager for Windows"
 authors = ["USER"]
 edition = "2021"

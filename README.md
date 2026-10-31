@@ -110,7 +110,7 @@ npx tauri build
 The installer will be generated at:
 
 ```text
-Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.1.0_x64-setup.exe
+Rheow\src-tauri\target\release\bundle\nsis\Rheow_1.1.1_x64-setup.exe
 ```
 
 To build only the standalone binary without packaging:
@@ -186,7 +186,7 @@ Rheow checks GitHub Releases shortly after startup and every 24 hours. Updates a
 The installer is not Authenticode-signed, so Windows may show **Windows protected your PC** with **Unknown publisher**. This is separate from Tauri's update signature, which verifies update packages inside Rheow. Before running the installer, compare its SHA-256 with the value published in the release notes:
 
 ```powershell
-Get-FileHash .\Rheow_1.1.0_x64-setup.exe -Algorithm SHA256
+Get-FileHash .\Rheow_1.1.1_x64-setup.exe -Algorithm SHA256
 ```
 
 If the hash matches, choose **More info -> Run anyway**.
