@@ -197,28 +197,19 @@ export const SchedulerView: React.FC<SchedulerViewProps> = ({
           >
             <Clock className="w-4.5 h-4.5 stroke-[2.2]" />
           </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-[#171717] tracking-tight">
-                Download Scheduler
-              </h2>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
-                  formState.enabled
-                    ? 'bg-[#dcfce7] text-[#15803d] border-[#86efac]'
-                    : 'bg-[#f5f5f5] text-[#737373] border-[#e5e5e5]'
-                }`}
-              >
-                {formState.enabled ? 'ACTIVE' : 'OFF'}
-              </span>
-            </div>
-            <p className="text-[11px] text-[#737373] mt-0.5 truncate">
-              {formState.enabled
-                ? `Runs queue automatically at ${formState.startTime}${
-                    enableStopTime && formState.stopTime ? ` – ${formState.stopTime}` : ''
-                  } on ${isAll ? 'all days' : isWeekdays ? 'weekdays' : isWeekends ? 'weekends' : `${formState.days.length} selected days`}`
-                : 'Automate queue execution at scheduled hours and days of the week'}
-            </p>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm sm:text-base font-bold text-[#171717] tracking-tight">
+              Download Scheduler
+            </h2>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                formState.enabled
+                  ? 'bg-[#dcfce7] text-[#15803d] border-[#86efac]'
+                  : 'bg-[#f5f5f5] text-[#737373] border-[#e5e5e5]'
+              }`}
+            >
+              {formState.enabled ? 'ACTIVE' : 'OFF'}
+            </span>
           </div>
         </div>
 
